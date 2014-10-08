@@ -1126,3 +1126,12 @@ function expand(obj){
     }
     obj.size = Math.max(obj.savesize, obj.value.length);
 }
+
+$('#textanalyser').keypress(function(event){
+    var keycode = (event.keyCode ? event.keyCode : event.which);
+    if(keycode == '13'){
+        ('#textanalyser').style["width"] = "50px"; 
+    } 
+});
+
+
