@@ -1152,7 +1152,12 @@ function customSize(type) {
     return size;
 }
 
-function expand(obj){
+function checkAndExpand(obj){
+    
+    if (obj.value == "") {
+        document.querySelector('.ui-helper-hidden-accessible').style.visibility = "hidden";
+    };
+
     if (!obj.savesize) {
         obj.savesize = obj.size;
     }
