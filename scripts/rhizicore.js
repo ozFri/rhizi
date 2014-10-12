@@ -1156,6 +1156,9 @@ function checkAndExpand(obj){
     
     if (obj.value == "") {
         document.querySelector('.ui-helper-hidden-accessible').style.visibility = "hidden";
+    }
+    else{
+        document.querySelector('.ui-helper-hidden-accessible').style.visibility = "visible";
     };
 
     if (!obj.savesize) {
