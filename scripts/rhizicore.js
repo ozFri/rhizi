@@ -1154,11 +1154,17 @@ function customSize(type) {
 
 function checkAndExpand(obj){
     
-    if (obj.value == "") {
+    if (obj.value == "" || obj.value == "#") {
         document.querySelector('.ui-helper-hidden-accessible').style.visibility = "hidden";
     }
     else{
         document.querySelector('.ui-helper-hidden-accessible').style.visibility = "visible";
+    };
+
+    if (obj.value == "#") {
+        document.querySelector('.ui-autocomplete.ui-front.ui-menu.ui-widget.ui-widget-content').style.visibility = "hidden";
+    } else{
+        document.querySelector('.ui-autocomplete.ui-front.ui-menu.ui-widget.ui-widget-content').style.visibility = "visible";
     };
 
     if (!obj.savesize) {
