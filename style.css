@@ -232,6 +232,10 @@ input:focus {
   pointer-events:none;
 }
 
+.typedesc{
+  opacity: 0.6;
+}
+
 #keys{
   opacity: 0.5;
     filter: alpha(opacity=50);

@@ -2,6 +2,8 @@
 
 var typeindex = 0;
 var nodetypes = ["person", "project", "skill", "deliverable", "objective"];
+var typedesc = ["Depict a person, real or fictional", "A collaborative enterprise planned to achieve a specific aim",
+"Depicts a specific ability of expertise a person can have", "A response to an assignment to which you can attach a file or a URL", ""];
 var suggestionChange=false;
 var sentenceStack = [];
 var typeStack = [];

@@ -112,14 +112,14 @@ function changeType(arg, id) {
         if (typeindex < 4) typeindex++;
         else typeindex = 0;
         graph.editType(id, null, nodetypes[typeindex]);
-        $('.typeselection').html('<table><tr><td style="height:28px"></td></tr><tr><td>' + "Chosen Type: " + nodetypes[typeindex] + '</td></tr></table>');
+        $('.typeselection').html('<table><tr><td style="height:28px"></td></tr><tr><td>' + "Chosen Type: " + nodetypes[typeindex] + '<div class = "typedesc">' + typedesc[typeindex] + '</div></td></tr></table>');
         graph.findCoordinates(lastnode,null);
     } else {
         if (typeindex > 0) typeindex--;
         else typeindex = 4;
 
         graph.editType(id, null, nodetypes[typeindex]);
-        $('.typeselection').html('<table><tr><td style="height:28px"></td></tr><tr><td>' + "Chosen Type: " + nodetypes[typeindex] + '</td></tr></table>');
+        $('.typeselection').html('<table><tr><td style="height:28px"></td></tr><tr><td>' + "Chosen Type: " + nodetypes[typeindex] + '<div class = "typedesc">' + typedesc[typeindex] + '</div></td></tr></table>');
         graph.findCoordinates(lastnode,null);
     }
     graph.update(true);
