@@ -52,6 +52,7 @@
 
 
 .ui-helper-hidden-accessible{
+	visibility: hidden;
 	position:fixed;
 	top:65px;
 	left:20px;
