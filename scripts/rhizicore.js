@@ -1153,20 +1153,11 @@ function customSize(type) {
 }
 
 function checkAndExpand(obj){
-    
-    if (obj.value == "" || obj.value == "#") {
-        document.querySelector('.ui-helper-hidden-accessible').style.visibility = "hidden";
-    }
-    else{
-        document.querySelector('.ui-helper-hidden-accessible').style.visibility = "visible";
-    };
 
-    if (obj.value == "#") {
-        document.querySelector('.ui-autocomplete.ui-front.ui-menu.ui-widget.ui-widget-content').style.visibility = "hidden";
-    } else{
-        document.querySelector('.ui-autocomplete.ui-front.ui-menu.ui-widget.ui-widget-content').style.visibility = "visible";
-    };
+    document.querySelector('.ui-helper-hidden-accessible').style.visibility = ((obj.value == "" || obj.value == "#") ? "hidden" : "visible");
 
+    document.querySelector('.ui-autocomplete.ui-front.ui-menu.ui-widget.ui-widget-content').style.visibility = (obj.value == "#" ? "hidden" : "visible");
+   
     if (!obj.savesize) {
         obj.savesize = obj.size;
     }
