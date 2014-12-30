@@ -194,15 +194,17 @@ class DBO_topo_diff_commit(DB_composed_op):
                     print("n_id: %r" % n_id)
                     ret_n_rm.extend(n_id)
 
-        return {'node_set': ret_n_set,
-                'link_set': ret_l_set,
-                'node_rm': ret_n_rm,
-                'link_rm': ret_l_rm}
+        topo_diff = Topo_Diff(node_set_add=ret_n_set,
+                              link_set_add=ret_l_set,
+                              node_set_rm=ret_n_rm,
+                              link_set_rm=ret_l_rm)
+        ret = topo_diff.to_json_dict()
+        return ret
 
 
 class DBO_attr_diff_commit(DB_op):
     """
-    commit a Attr_Diff
+    commit a Attr_Diff, return an Attr_Diff
     """
     def __init__(self, attr_diff):
         super(DBO_attr_diff_commit, self).__init__()
@@ -537,8 +539,11 @@ class DBO_rz_clone(DB_op):
 
                     ret_l_set.append(l)
 
-        return {'node_set': ret_n_set,
-                'link_set': ret_l_set }
+        topo_diff = Topo_Diff(node_set_add=ret_n_set,
+                        link_set_add=ret_l_set)
+        ret = topo_diff.to_json_dict()
+        return ret
+
 
 class DB_Controller:
     """
