@@ -10,7 +10,7 @@ define({
                            'street-address',
                            'description',
                            'email',
-                           'image-URL',
+                           'image-url',
                            'name',
                            'url'
                            ],
@@ -36,9 +36,20 @@ define({
         'affiliation': 'Affiliation',
         'description': 'Description',
         'email': 'Email',
-        'image-URL': 'Image URL',
+        'image-url': 'Image URL',
         'name': 'Name',
-        'url': 'URL',
         'street-address': 'Street Address',
-    }
+        'type': 'Type',
+        'url': 'URL',
+    },
+    attribute_ui: {
+        'affiliation': 'textarea',
+        'description': 'textarea',
+        'email': 'input',
+        'image-url': 'image',
+        'name': 'input',
+        'street-address': 'textarea',
+        'type': 'type',
+        'url': 'url',
+    },
 });
