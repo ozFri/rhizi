@@ -7,7 +7,6 @@ define({
         'person': {
             'title': 'Person',
             'attributes': ['affiliation',
-                           'street-address',
                            'description',
                            'email',
                            'image-url',
@@ -17,7 +16,7 @@ define({
             },
         'project': {
             'title': 'Project',
-            'attributes': ['description', 'url'],
+            'attributes': ['description', 'url', 'rhizi-url'],
         },
         'project_component': {
             'title': 'Project Component',
@@ -36,20 +35,20 @@ define({
         'affiliation': 'Affiliation',
         'description': 'Description',
         'email': 'Email',
-        'image-url': 'Image URL',
         'name': 'Name',
-        'street-address': 'Street Address',
         'type': 'Type',
         'url': 'URL',
+        'image-url': 'Image URL',
+        'rhizi-url': 'Rhizi URL',
     },
     attribute_ui: {
         'affiliation': 'textarea',
         'description': 'textarea',
         'email': 'input',
-        'image-url': 'image',
         'name': 'input',
-        'street-address': 'textarea',
         'type': 'type',
+        'image-url': 'image',
         'url': 'url',
+        'rhizi-url': 'rhizi-url',
     },
 });
