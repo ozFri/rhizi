@@ -169,10 +169,7 @@ def init_ws_interface(cfg, kernel, flask_webapp):
         Cast update messege to subscribed readers
         """
 
-        cast_set = []
-        rzdoc_r_set = kernel.rzdoc__reader_set_from_rzdoc(rzdoc)
-        for r_assoc in rzdoc_r_set:
-            cast_set.append(r_assoc)
+        cast_set = [r_assoc for r_assoc in kernel.rzdoc__reader_set_from_rzdoc(rzdoc)]
 
         log.debug('reader diff cast: rzdoc: %s, cast size: %d' % (rzdoc.name, len(cast_set)))
         for r_assoc in cast_set:
