@@ -35,7 +35,7 @@ class Query_Struct_Type(Enum):
         assert False
 
     def __eq__(self, other):  # allow comparing against r/w/rw strings
-        mappings = {'r': Query_Struct_Type.r, 'w':Query_Struct_Type.w , 'rw':Query_Struct_Type.rw}:
+        mappings = {'r': Query_Struct_Type.r, 'w':Query_Struct_Type.w , 'rw':Query_Struct_Type.rw}
         if other in mappings.keys():
             other = mappings[other]
         if not isinstance(other, Query_Struct_Type): return False
