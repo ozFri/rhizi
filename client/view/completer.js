@@ -59,7 +59,9 @@ var completer = (function (input_element, dropdown, base_config) {
         dropdown_raw = dropdown[0],
         dropdown_visible = false,
         options_bus = new Bacon.Bus(),
+	//pattern_bus = new Bacon.Bus(),
         completionsBus = new Bacon.Bus(),
+	//patternOptions = [],	
         options = [],
         selected_index = -1,
         input_element_raw = input_element[0],
@@ -89,6 +91,10 @@ var completer = (function (input_element, dropdown, base_config) {
         options = new_options;
     });
 
+//    pattern_bus.onValue(function update_patternOptions(new_options) {
+//        patternOptions = new_patternOptions;
+//    });
+	
     input_element.keyup(function(e) {
         var ret = undefined;
         if (e.shiftKey) {
@@ -160,6 +166,25 @@ var completer = (function (input_element, dropdown, base_config) {
         ret.sort();
         return ret;
     }
+    function patternCompletions(text)
+    {
+        var ret = [
+		"name  AGREE_WITH  statement ",
+		"name  DISAGREE_WITH  statement ",
+	    	"name  UNDECIDED_ON  statement ",
+		"statement  INFERS  statement ",
+	    	"statement  CONTRADICTS  statement ",
+		];
+
+//        for (var name in patternOptions) {
+//something smarter than that
+		//            if (name.toLowerCase().indexOf(text.toLowerCase()) !== -1) {
+//                ret.push(name);
+//            }
+//        }
+//        ret.sort();
+        return ret;
+    }
 
     var click_event = 'click.completer.' + input_element_raw.id;
     function hide_on_click(e) {
@@ -224,6 +249,17 @@ var completer = (function (input_element, dropdown, base_config) {
         if (string.length < minimum_length) {
             return;
         }
+	dropdown.append($('<div class="divider">---Pattern Suggestions----</div>'));
+        patternCompletions(string).forEach(function(name) {
+            var suggestion = $('<div class="suggestion-item">' + name + '</div>');
+            suggestion.on('click', function(e) {
+                // TODO: move to handling element?
+                _applySuggestion(name);
+                input_element.focus();
+            });
+            dropdown.append(suggestion);
+        });
+	dropdown.append($('<div class="divider">---Content Suggestions----</div>'));
         completions(string).forEach(function(name) {
             var suggestion = $('<div class="suggestion-item">' + name + '</div>');
             suggestion.on('click', function(e) {
@@ -305,6 +341,7 @@ var completer = (function (input_element, dropdown, base_config) {
     return {
         // input bus
         options: options_bus,
+//	patternOptions: pattern_bus,    
         // output bus
         completionsBus: completionsBus,
         oninput: oninput,
