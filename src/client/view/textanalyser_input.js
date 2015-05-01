@@ -90,6 +90,7 @@ function textanalyser_input(spec) {
             appendOnCompletion: '  ',
         },
         analysisCompleter = completer(element, $(spec.completer_name), completer_spec),
+//        analysisCompleter2 = completer(element, $(spec.completer_name2), completer_spec),
         document_keydown = new Bacon.Bus(),
         input_bus = new Bacon.Bus(),
         selectionBus = element.asEventStream('selectstart input keyup').map(selectionStart).skipDuplicates();
@@ -106,6 +107,17 @@ function textanalyser_input(spec) {
 
             return options[is_link ? 'links' : 'nodes'];
         }));
+//    analysisCompleter2.options.plug(
+//        textanalysis.suggestions_options
+//        .combine(selectionBus, first_argument)
+//        .combine(ta.on_analysis__output, first_argument)
+//        .map(
+//        function (options) {
+//            var is_link = textanalysis.element_at_position__is_link(selectionStart());
+//
+//            return options[is_link ? 'links' : 'nodes'];
+//        }));
+
 
     util.assert(1 === element.length);
 
@@ -145,6 +157,7 @@ function textanalyser_input(spec) {
 
     element.asEventStream('input selectionchange click').onValue(function (e) {
         analysisCompleter.oninput(current_value(), selectionStart(element_raw));
+//        analysisCompleter2.oninput(current_value(), selectionStart(element_raw));
         e.stopPropagation();
         e.preventDefault();
     });

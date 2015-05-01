@@ -400,6 +400,9 @@ body.debug .debug-ui-right {
 
 #input-suggestion {
   width: 100%; }
+#input-suggestion2 {
+  width: 100%; }
+
 
 .suggestion {
   position: relative;
@@ -415,6 +418,13 @@ body.debug .debug-ui-right {
   background: white;
   z-index: 100;
   box-shadow: 0px 3px 6px 0px rgba(0, 0, 0, 0.3); }
+
+.divider {
+	color:#a5a5aa;
+	font-size:17px;
+	font:monospace;
+
+}
 
 .suggestion-item {
   padding: 6px 0px 6px 18px;
@@ -546,30 +556,30 @@ body.debug .debug-ui-right {
 
 #edit-dialog__delete {
   float: right; }
-
+/*person*/
 .info-container.type-person {
-  border-top-color: #004681; }
-
+  border-top-color: cyan; }
+/*agree*/
 .info-container.type-club {
-  border-top-color: #ee3654; }
-
+  border-top-color: lightgreen; }
+/*disagreement*/
 .info-container.type-skill {
-  border-top-color: #fad900; }
-
+  border-top-color: lightcoral; }
+/*inference*/
 .info-container.type-internship {
-  border-top-color: #ff8b11; }
-
+  border-top-color: green; }
+/*contradiction*/
 .info-container.type-interest {
-  border-top-color: #8b3ab0; }
+  border-top-color: red; }
 
 .info-container.type-empty {
   border-top-color: #919095; }
 
 .info-container.type-third-internship-proposal {
   border-top-color: #33c2e0; }
-
+/*undecided*/
 .info-container.type-project {
-  border-top-color: #40C200; }
+  border-top-color: yellow; }
 
 .kbd-button {
   background-color: #f7f7f7;

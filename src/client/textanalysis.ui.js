@@ -7,6 +7,7 @@ var element_name = '#textanalyser',
     input = textanalyser_input({
         'element_name': element_name,
         'completer_name': '#input-suggestion',
+//        'completer_name2': '#input-suggestion2',
         }),
     plus_button = $('#btn_add'),
     description = consts.description,
