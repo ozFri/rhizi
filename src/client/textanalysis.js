@@ -15,6 +15,7 @@ var typeindex = 0,
     node_name_to_type = {},
     nodetype_to_index = _.object(nodetypes, _.range(nodetypes.length));
 
+
 var _get_lastnode,
     get_lastnode = function (editgraph, cursor) {
         return undefined !== _get_lastnode ? _get_lastnode(editgraph, cursor) : null;
@@ -221,6 +222,7 @@ function cleanup(text)
  * Assumes the whole input string is available, used for lookahead via slice.
  *
  * node_token is it's own token, represented by itself.
+ * and is currently the separator string defined in rz_config in the index.html file.
  *
  * accepts a quotation char which allows whitespace in between.
  *
@@ -372,12 +374,32 @@ var textAnalyser = function (spec) {
                 spec.finalize !== undefined &&
                 "bad input");
 
+    function typesetter(name){
+		if(name.indexOf("DISAGREE_WITH") !== -1){
+				return("club");
+		}
+			else if (name.indexOf("AGREE_WITH") !== -1){
+				return("skill");
+			}
+			else if (name.indexOf("INFERS") !== -1){
+				return("internship");
+			}
+			else if (name.indexOf("CONTRADICTS") !== -1){
+				return("interest");
+			}
+			else if (name.indexOf("UNDECIDED") !== -1){
+				return("project");
+			}
+		else {	
+				return("empty");}
+		
+    }
     function __addNode(name) {
         var type;
         if (name === NEW_NODE_NAME) {
             type = selectedType();
         } else {
-            type = node_name_to_type[name] || selectedType();
+            type = typesetter(name);//node_name_to_type[name] || default_nodetype;
         }
         var node = {
                     'name': name,
@@ -397,7 +419,7 @@ var textAnalyser = function (spec) {
             }
             return;
         }
-        name = name || 'is';
+        name = 'wikidiun';
         if (link_hash[src_name] && link_hash[src_name][dst_name]) {
             if (yell_bug) {
                 console.log('bug - adding link twice (' + src_name + ', ' + dst_name + ')');
@@ -412,7 +434,7 @@ var textAnalyser = function (spec) {
         var link = {
             src_name: src_name,
             dst_name: dst_name,
-            name: name,
+            name: "wikidiun",
         };
         links.push(link);
     }
@@ -440,10 +462,12 @@ var textAnalyser = function (spec) {
     var mod_2 = function (mod) {
         return thirds.filter(mod_2_second(mod)).map(obj_take('token'));
     };
+    //can be I nodes names
     node_names = mod_2(0);
     if (node_names[node_names.length - 1] === '') {
         node_names[node_names.length - 1] = NEW_NODE_NAME;
     }
+    //can be S nodes names
     link_names = mod_2(1);
 
     //WRITE COMPLETE SENTENCE
@@ -464,11 +488,19 @@ var textAnalyser = function (spec) {
     node_names.forEach(function (node_name, nodeindex) {
         var link_name = link_names[nodeindex],
             next_node_name = list_get(node_names, nodeindex + 1, NEW_NODE_NAME);
+	//add i node
         __addNode(node_name);
         if (link_name !== undefined) {
-            __addLink(node_name,
-                      next_node_name,
-                      link_name);
+        //add s node?
+		var randomdate= new Date();
+		link_name= link_name + randomdate.getTime().toString(); 
+		__addNode(link_name)
+	    	__addLink(node_name,
+                      link_name,
+                      link_name)
+		__addLink(link_name,
+			  next_node_name,
+			  link_name)
         }
     });
 
@@ -480,20 +512,20 @@ var textAnalyser = function (spec) {
     //  A, and, B, verb, C, and, D, verb2, E
     //  [A, and, B], [verb], [C, and, D], [verb2], [E]
     //  # ==> "new node"
-    var node_or_and = function (obj, i) { return i % 2 === 0 || obj.token === 'and'; };
-    function and_connect() {
-        subsets_strict(3, 2, group(thirds, node_or_and))
-            .forEach(function (data) {
-                var and_source = data[0].filter(even_second).map(obj_take('token')),
-                    and_target = data[2].filter(even_second).map(obj_take('token')),
-                    verb = data[1][0].token;
-                util.assert(data[1].length == 1);
-                list_product(and_source, and_target).forEach(function (pair) {
-                    __addLink(pair[0], pair[1], verb);
-                });
-            });
-    }
-    and_connect();
+    //var node_or_and = function (obj, i) { return i % 2 === 0 || obj.token === 'and'; };
+    //function and_connect() {
+    //    subsets_strict(3, 2, group(thirds, node_or_and))
+    //        .forEach(function (data) {
+    //            var and_source = data[0].filter(even_second).map(obj_take('token')),
+    //                and_target = data[2].filter(even_second).map(obj_take('token')),
+    //                verb = data[1][0].token;
+    //            util.assert(data[1].length == 1);
+    //            list_product(and_source, and_target).forEach(function (pair) {
+      //              __addLink(pair[0], pair[1], verb);
+    //            });
+    //        });
+    //}
+    //and_connect();
 
     ret.drop_conjugator_links = true; // leaving since we might change behavior again
 

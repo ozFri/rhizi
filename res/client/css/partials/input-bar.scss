@@ -92,6 +92,9 @@
 #input-suggestion {
     width: 100%;
 }
+#input-suggestion {
+    width: 100%;
+}
 
 .suggestion{
   position: relative;
@@ -108,6 +111,14 @@
   z-index: 100;
   @include rz-box-shadow(0px, 3px, 6px, 0px, rgba(0,0,0,0.3) );
 }
+
+.divider {
+	color:$light-grey;
+	font-size:$h4-size;
+	font:monospace;
+
+}
+
 
 .suggestion-item {
   padding: 6px 0px 6px 18px;
