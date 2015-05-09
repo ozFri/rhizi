@@ -515,20 +515,20 @@ var textAnalyser = function (spec) {
     //  A, and, B, verb, C, and, D, verb2, E
     //  [A, and, B], [verb], [C, and, D], [verb2], [E]
     //  # ==> "new node"
-    var node_or_and = function (obj, i) { return i % 2 === 0 || obj.token === 'and'; };
-    function and_connect() {
-        subsets_strict(3, 2, group(thirds, node_or_and))
-            .forEach(function (data) {
-                var and_source = data[0].filter(even_second).map(obj_take('token')),
-                    and_target = data[2].filter(even_second).map(obj_take('token')),
-                    verb = data[1][0].token;
-                util.assert(data[1].length == 1);
-                list_product(and_source, and_target).forEach(function (pair) {
-       //             __addLink(pair[0], pair[1], verb);
-                });
-            });
-    }
-    and_connect();
+    //var node_or_and = function (obj, i) { return i % 2 === 0 || obj.token === 'and'; };
+    //function and_connect() {
+    //    subsets_strict(3, 2, group(thirds, node_or_and))
+    //        .forEach(function (data) {
+    //            var and_source = data[0].filter(even_second).map(obj_take('token')),
+    //                and_target = data[2].filter(even_second).map(obj_take('token')),
+    //                verb = data[1][0].token;
+    //            util.assert(data[1].length == 1);
+    //            list_product(and_source, and_target).forEach(function (pair) {
+      //              __addLink(pair[0], pair[1], verb);
+    //            });
+    //        });
+    //}
+    //and_connect();
 
     ret.drop_conjugator_links = true; // leaving since we might change behavior again
 
