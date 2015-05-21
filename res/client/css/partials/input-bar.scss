@@ -153,6 +153,9 @@
     color: blue;
 }
 
+.analyser-span-node input:focus {
+	display: none;
+    }
 .analyser-span-link {
     color: red;
 }

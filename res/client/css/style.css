@@ -451,6 +451,9 @@ body.debug .debug-ui-right {
 
 .analyser-span-node {
   color: blue; }
+.input-bar input:focus +.analyser-span-node{
+	display: none;
+}
 
 .analyser-span-link {
   color: red; }

@@ -1,0 +1,5 @@
+begin
+create (_0:`__RZDOC` {`id`:"7eba39e807d7", `name`:"something"})
+create (_1:`__RZDOC_NS_META_7eba39e807d7`:`__HEAD`:`__COMMIT` {`blob`:"", `hash`:"adc83b19e793491b1c6ea0fd8b46cd9f32e592fc", `id`:"adc83b19e793491b1c6ea0fd8b46cd9f32e592fc", `name`:"root-commit", `ts_created`:1430131487528})
+;
+commit
