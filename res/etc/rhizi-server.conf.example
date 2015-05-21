@@ -8,7 +8,9 @@
 # General
 #
 #root_path =
-#template_d_path
+#fragment_d_path =
+#template_d_path =
+#user_db_path =
 
 development_mode = True
 static_url_path = /static
@@ -55,8 +57,8 @@ feedback_recipient = feedback@localhost
 # Security
 #
 access_control = True
-user_db_path = ./etc/user_db.db
-acl__singup__email_domain =
+acl_wl__email_domain_set =
+acl_wl__email_address_file_path =
 signup_enabled = True
 
 # -----------------------------------------------------------------------------

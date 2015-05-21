@@ -3,7 +3,8 @@
 /**
  * Manage backend websocket connection
  */
-define([ 'util', 'model/diff', 'model/util', 'socketio'], function(util, model_diff, model_util, io) {
+define([ 'util', 'model/diff', 'model/util', 'socketio', 'view/activity'],
+function( util,   model_diff,   model_util,   io,              activity) {
 
     var ws_server_url = document.location.origin + '/graph'; // socketio namespace
 
@@ -63,7 +64,8 @@ define([ 'util', 'model/diff', 'model/util', 'socketio'], function(util, model_d
         var topo_diff_spec = { node_set_add: node_set_add,
                                link_set_add: link_ptr_set,
                                node_id_set_rm: topo_diff_spec_raw.node_id_set_rm,
-                               link_id_set_rm: topo_diff_spec_raw.link_id_set_rm };
+                               link_id_set_rm: topo_diff_spec_raw.link_id_set_rm,
+                               meta: topo_diff_spec_raw.meta };
 
         // [!] note: this is not a pure Topo_Diff object in the sense it contain a link_ptr_set,
         // not a resolved link object set
@@ -71,7 +73,8 @@ define([ 'util', 'model/diff', 'model/util', 'socketio'], function(util, model_d
 
         console.log('ws: rx: ws_diff_merge__topo, committing wire-adapted topo_diff:', topo_diff);
 
-        rz_mesh_graph_ref.commit_diff__topo(model_diff.new_topo_diff(topo_diff_spec));
+        activity.incomingActivityBus.push(topo_diff_spec);
+        rz_mesh_graph_ref.commit_diff__topo(topo_diff);
     }
 
     /**
@@ -82,6 +85,8 @@ define([ 'util', 'model/diff', 'model/util', 'socketio'], function(util, model_d
     function ws_diff_merge__attr(attr_diff_spec, attr_diff_cr) {
         var attr_diff = model_diff.new_attr_diff_from_spec(attr_diff_spec); // run through validation
         console.log('ws: rx: ws_diff_merge__attr, committing wire-adapted topo_diff:', attr_diff);
+
+        activity.incomingActivityBus.push(attr_diff_spec);
         rz_mesh_graph_ref.commit_diff__attr(attr_diff);
     }
 

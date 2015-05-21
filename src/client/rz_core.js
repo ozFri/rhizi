@@ -1,7 +1,7 @@
 "use strict"
 
-define(['jquery', 'd3', 'consts', 'rz_bus', 'util', 'model/graph', 'model/core', 'view/item_info', 'rz_observer', 'view/selection', 'rz_mesh', 'model/diff', "view/graph_view", 'view/svg_input', 'view/filter_menu'],
-function($,        d3,   consts,   rz_bus,   util,   model_graph,   model_core,        item_info,   rz_observer,   selection,        rz_mesh,   model_diff,   graph_view,       svg_input,              filter_menu) {
+define(['jquery', 'd3', 'consts', 'rz_bus', 'util', 'model/graph', 'model/core', 'view/item_info', 'rz_observer', 'view/selection', 'rz_mesh', 'model/diff', "view/graph_view", 'view/svg_input', 'view/filter_menu', 'view/activity', 'rz_api_backend', 'view/toolbar__status'],
+function($,        d3,   consts,   rz_bus,   util,   model_graph,   model_core,        item_info,   rz_observer,   selection,        rz_mesh,   model_diff,   graph_view,       svg_input,              filter_menu,        activity, rz_api_backend, toolbar__status) {
 
 // fix circular module dependency
 var search;
@@ -59,16 +59,28 @@ function recenterZoom() {
     vis.attr("transform", "translate(0,0)scale(1)");
 }
 
-var initDrawingArea = function () {
+function init_graphs() {
+    var user_id = $('#user_id'),
+        user = user_id.text();
+
+    main_graph = new model_graph.Graph({temporary: false, base: null});
+    edit_graph = new model_graph.Graph({temporary: true, base: main_graph});
+
+    if (user_id.length > 0) {
+        console.log('found user ID: \'' + user + '\'');
+        main_graph.set_user(user);
+        edit_graph.set_user(user);
+    }
+    activity.incomingActivityBus.plug(main_graph.activityBus);
+}
+
+var init_graph_views = function () {
 
     function zoom() {
         zoom_g.attr("transform", "translate(" + d3.event.translate + ")scale(" + d3.event.scale + ")");
         d3.event.sourceEvent != null && d3.event.sourceEvent.stopPropagation();
         updateZoomProgress(true);
     }
-
-    main_graph = new model_graph.Graph({temporary: false, base: null});
-    edit_graph = new model_graph.Graph({temporary: true, base: main_graph});
 
     // TODO: we are listening both on graph.diffBus and selection.selectionChangedBus,
     //  but the relation is actually:
@@ -83,15 +95,6 @@ var initDrawingArea = function () {
             update_view__graph(false);
         }
     );
-
-    var user_id = $('#user_id'),
-        user = user_id.text();
-
-    if (user_id.length > 0) {
-        console.log('found user ID: \'' + user + '\'');
-        main_graph.set_user(user);
-        edit_graph.set_user(user);
-    }
 
     var el = document.body;
     vis = d3.select('#graph-view__canvas').append("svg:svg")
@@ -201,8 +204,10 @@ function init_ws_connection(){
 }
 
 function init() {
-    initDrawingArea();
+    init_graphs();
+    init_graph_views();
     init_ws_connection();
+    activity.init(main_graph, main_graph_view, $('.graph-view'));
 
     if (rz_config.backend_enabled) {
         var cur_rzdoc_name = rzdoc__current__get_name();
@@ -277,6 +282,24 @@ function url_for_doc(rzdoc_name)
     return '/rz/' + rzdoc_name;
 }
 
+function rzdoc__create_and_open(rzdoc_name) {
+
+    var on_success = function (clone_obj) {
+        rzdoc__open(rzdoc_name);
+    };
+
+    var on_error = function(xhr, status, err_thrown) {
+        // TODO: handle malformed doc name
+        var toolbar__status_body;
+
+        toolbar__status_body = $('<div>Cannot create document titled \'' + rzdoc_name + '\', document already exists.</div>');
+        toolbar__status.display_html_frag(toolbar__status_body);
+    };
+
+    // TODO: validate rzdoc name
+    rz_api_backend.rzdoc_create(rzdoc_name, on_success, on_error);
+}
+
 /**
  * open rzdoc:
  *    - set rz_config.rzdoc_cur__name
@@ -284,23 +307,51 @@ function url_for_doc(rzdoc_name)
  *    - do nothing if name of current rzdoc equals requested rzdoc
  */
 function rzdoc__open(rzdoc_name) {
+
+    function on_success() {
+        get_search().clear();
+        main_graph_view.zen_mode__cancel();
+        window.history.replaceState(null, page_title(rzdoc_name), url_for_doc(rzdoc_name) + location.search);
+
+        var rzdoc_bar = $('#rzdoc-bar_doc-label');
+        var rzdoc_bar__doc_lable = $('#rzdoc-bar_doc-label');
+        rzdoc_bar.fadeToggle(500, 'swing', function() {
+            rzdoc_bar__doc_lable.text(rzdoc_name);
+            rzdoc_bar.fadeToggle(500);
+        });
+
+        rz_mesh.emit__rzdoc_subscribe(rzdoc_name);
+        console.log('rzdoc: opened rzdoc : \'' + rzdoc_name + '\'');
+    };
+
+    function on_error(xhr, status, err_thrown) {
+        var create_btn,
+            rzdoc_name,
+            toolbar__status_body;
+
+        rzdoc_name = xhr.responseJSON.data.rzdoc_name;
+
+        create_btn = $('<span>');
+        create_btn.text('Create document');
+        create_btn.addClass('status-bar__btn_rzdoc_create_post_404');
+
+        toolbar__status_body = $('<div>');
+        toolbar__status_body.text('Rhizi could not find a document titled \'' + rzdoc_name + '\'.');
+        toolbar__status_body.append(create_btn);
+
+        create_btn.click(function() {
+            rzdoc__create_and_open(rzdoc_name);
+            toolbar__status.hide();
+        });
+
+        toolbar__status.display_html_frag(toolbar__status_body);
+    }
+
     rz_config.rzdoc_cur__name = rzdoc_name;
     main_graph.clear();
     edit_graph.clear();
-    main_graph.load_from_backend();
-    get_search().clear();
-    main_graph_view.zen_mode__cancel();
-    window.history.replaceState(null, page_title(rzdoc_name), url_for_doc(rzdoc_name));
-
-    var rzdoc_bar = $('#rzdoc-bar_doc-label');
-    var rzdoc_bar__doc_lable = $('#rzdoc-bar_doc-label');
-    rzdoc_bar.fadeToggle(500, 'swing', function() {
-        rzdoc_bar__doc_lable.text(rzdoc_name);
-        rzdoc_bar.fadeToggle(500);
-    });
-
-    rz_mesh.emit__rzdoc_subscribe(rzdoc_name);
-    console.log('rzdoc: opened rzdoc : \'' + rzdoc_name + '\'');
+    activity.clear();
+    main_graph.load_from_backend(on_success, on_error);
 }
 
 function rzdoc__current__get_name() {
@@ -315,6 +366,7 @@ var published_var_dict = {
     // functions
     init: init,
     load_from_json: load_from_json,
+    rzdoc__create_and_open: rzdoc__create_and_open,
     rzdoc__open: rzdoc__open,
     rzdoc__current__get_name: rzdoc__current__get_name,
     rzdoc__open_default: rzdoc__open_default,

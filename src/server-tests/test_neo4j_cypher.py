@@ -11,7 +11,8 @@ from neo4j_cypher import Cypher_Parser, DB_Query
 from neo4j_qt import QT_RZDOC_NS_Filter
 import neo4j_test_util
 from neo4j_util import meta_attr_list_to_meta_attr_map
-from rz_server import Config, init_log
+from rz_config import RZ_Config
+from rz_server import init_log
 from test_util import generate_random_node_dict, generate_random_link_dict, \
     generate_random_RZDoc
 from test_util__pydev import debug__pydev_pd_arg
@@ -21,7 +22,7 @@ class Test_DB_Op(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        cfg = Config.init_from_file('res/etc/rhizi-server.conf')
+        cfg = RZ_Config.init_from_file('res/etc/rhizi-server.conf')
         self.log = init_log(cfg)
 
     def setUp(self):
@@ -92,6 +93,11 @@ class Test_DB_Op(unittest.TestCase):
                    'match (n:`T_nMu7ktxW` {node_attr})',
                    'match (n:A:B)-[r_b:Knows {a: \'0\'}]-(m:Skill), (n)-[]-(m)',
 
+                   # path quantifier
+                   'match (n:A)-[r:B*0..4]-(m)',
+                   'match (m)-[*0..2]-(m)',
+                   'match ()-[r*0..6]-()',
+
                    #
                    # UNICODE tests
                    #
@@ -153,7 +159,7 @@ class Test_DB_Op(unittest.TestCase):
         dbq = DB_Query(q_arr)
         dbq_set = [dbq]
 
-        #dbq_set = dbq_set[:1]
+        # dbq_set = dbq_set[:1]
         self.test_T__common(dbq_set, QT_RZDOC_NS_Filter, test_rzdoc)
 
     def test_T__common(self, dbq_set, T, *args):

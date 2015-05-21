@@ -4,12 +4,10 @@ import unittest
 from werkzeug.test import Client
 from werkzeug.test import EnvironBuilder
 
-from db_controller import DB_Driver_Embedded
 import db_controller as dbc
-from db_op import DBO_cypher_query
-from rhizi_server import Config
+from db_op import DBO_raw_query_set
 import rz_api
-from rz_server import Config
+from rz_config import RZ_Config
 from test_util__pydev import debug__pydev_pd_arg
 
 
@@ -20,7 +18,7 @@ class TestRhiziAPI(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        cfg = Config.init_from_file('res/etc/rhizi-server.conf')
+        cfg = RZ_Config.init_from_file('res/etc/rhizi-server.conf')
         self.db_ctl = dbc.DB_Controller(cfg.db_base_url)
         rz_api.db_ctl = self.db_ctl
 
@@ -51,7 +49,7 @@ class TestRhiziAPI(unittest.TestCase):
         """
         id_set = ['skill_00']
         q = ['create (s:Skill {id: \'skill_00\'} )']
-        op = DBO_cypher_query(q)
+        op = DBO_raw_query_set(q)
         self.db_ctl.exec_op(op)
 
         with rz_api.webapp.test_client() as c:

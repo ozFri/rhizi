@@ -510,20 +510,49 @@ function GraphView(spec) {
                 });
         }
 
-        var link_on_hover = function (d, debug_name) {
+        /*
+         * @this - the element being hovered on. Could use d.id instead
+         */
+        var link__hover__start = function (d) {
+            var e = document.getElementById(d.id);
+
+            add_class(e, 'hovering');
+            // show text if not selected
+            if (!selection.link_related(d)) {
+                set_link_label_text(d.id, link_text__short(d));
+            }
+        }
+        gv.link__hover__start = link__hover__start;
+
+        var link__hover__end = function (d) {
+            var e = document.getElementById(d.id);
+
+            remove_class(e, 'hovering');
+            // hide text if not selected
+            if (!selection.link_related(d)) {
+                set_link_label_text(d.id, "");
+            }
+        }
+        gv.link__hover__end = link__hover__end;
+
+        var link_on_hover = function (d) {
             $('#' + d.id).hover(function (e) {
-                add_class(this, 'hovering');
-                // show text if not selected
-                if (!selection.link_related(d)) {
-                    set_link_label_text(this.id, link_text__short(d));
-                }
+                link__hover__start(d);
             }, function (e) {
-                remove_class(this, 'hovering');
-                // hide text if not selected
-                if (!selection.link_related(d)) {
-                    set_link_label_text(this.id, "");
-                }
+                link__hover__end(d);
             });
+        }
+
+        gv.node__hover__start = function (d) {
+            var e = document.getElementById(d.id);
+
+            add_class(e, 'hovering');
+        }
+
+        gv.node__hover__end = function (d) {
+            var e = document.getElementById(d.id);
+
+            remove_class(e, 'hovering');
         }
 
         relayout = (relayout === undefined && true) || relayout;
@@ -584,7 +613,7 @@ function GraphView(spec) {
         }
 
         link_g.each(function (d) {
-                link_on_hover(d, 'link-g');
+                link_on_hover(d);
             });
         link_g.on("click", function(d, i) {
                 if (zoomInProgress) {
@@ -657,7 +686,7 @@ function GraphView(spec) {
             .call(drag);
 
         node.attr('class', function(d) {
-                return ['node', selection.class__node(d, temporary)].join(' ');
+                return ['node' +" " + d.type + " " + d.state + " " + "graph", selection.class__node(d, temporary)].join(' ');
             })
             .each(function (d) {
                 d.zoom_obj = zoom_obj; // FIXME new object NodeView pointing to Node and Zoom
@@ -809,9 +838,6 @@ function GraphView(spec) {
             .attr('r', node__radius);
         circle = nodeEnter.insert("circle");
         node.select('g.node > circle')
-            .attr("class", function(d) {
-                return d.type + " " + d.state + " circle graph";
-            })
             .attr("r", node__radius)
             .attr("filter", function (d) {
                 return urlImage(d['image-url']) ? svg_url(filter_id(d.id)) : '';

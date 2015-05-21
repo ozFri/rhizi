@@ -78,7 +78,10 @@ To update the css files you need [sass](http://sass-lang.com/). To rebuild the c
 
  For dev mode(debbuging, manual file load) use `?debug=1` at end of URL: e.g. `file://rhizifolder/html.index?debug=1`
 
-## CSS / SCSS Coding Conventions
+## Coding Conventions - Ant Scripts
+- use underscore as delimiter in var name, eg: <code>pkg_foo_bar</code>
+
+## Coding Conventions - CSS / SCSS
 - assume use of modern browsers
 - indent files using 4 space characters
 - apply alphabetical ordering whenever possible: selectors, directives, etc.
@@ -87,10 +90,9 @@ To update the css files you need [sass](http://sass-lang.com/). To rebuild the c
 - avoid using browser-specific CSS directives when hand-writing CSS code
 
 ## Neo4J DB management
-- to reset the DB:
+- Clean Neo4J instances are auto-initialized by the rhizi server
+- to reset the DB manually:
  $ neo4j-shell -file res/neo4j/reset-db__clean.cypher
-- then to add a single test link:
- $ neo4j-shell -file res/neo4j/reset-db__single_link.cypher
 
 ## Running server tests
 Test code makes use of Python's unittest - run by invoking them with python,
@@ -98,6 +100,9 @@ or by creating a launch configuration in your IDE of choice.
 
 Note: server test-cases do not yet support pre-run DB state validation and are
 likely to leave DB side-effects.
+
+## Random data generation
+Taks a look at <code>src/server-tests/test_util__rzdoc#DBO_RDG__skill_graph</code> as a starting point for random data generation.
 
 ## Installing on windows (WIP)
 mingw doesn't have python support, so using mingw (I want a unix native python)
@@ -127,6 +132,16 @@ mingw doesn't have python support, so using mingw (I want a unix native python)
     - didn't complete.
 
 # Deployment
+Deployment takes two forms currently: 
+- development mode, in which flask handles all resource serving, including client/server code, resources & fragments
+- reverse proxy mode, in which a reverse proxy, eg. Apache is used to serve all static content
+
+These modes impost a slightly different resource layout, and require the following values to be correcly set/injected:
+- app.js: <code>fragment_d_path</code>, handled by jinja
+- rhizi-server.conf: <code>fragment_d_path</code>
+- rhizi-server.conf: <code>template_d_path</code>
+
+## Deployment Steps
 - obtain a server configuration by either adjusting res/etc/rhizi-server.conf.example or reusing an already active one.
 - the following configuration keys will likely need changing: DEBUG, SECRET_KEY, root_path, access_control, etc.
 - let targetDomain be the target domain (i.e. rhizi.example.com)
@@ -139,15 +154,14 @@ mingw doesn't have python support, so using mingw (I want a unix native python)
 - Deploying:
  $ ant -v -f build.ant -DremoteDeployServer=rhizi.example.com -Drsync_module=/srv/www/rhizi.example.com deploy-remote
 
-## getting the current config file from the server:
+### getting the current config file from the server:
 
  $ targetDomain="cri.rhizi.net"
  $ mkdir res/production-patch-set/${targetDomain}
  $ scp rz-1:/etc/rhizi/rhizi-server.conf res/production-patch-set/${targetDomain}/rhizi-server.production.conf
 
-## Tools
-### rz-doc
-
+# Tools
+## rz-doc
 This is the only way to merge a number of documents right now. Here is how:
 
 It is installed by default to /srv/www/<domain>/tools/rz-doc, lets call that rz-doc for short.

@@ -113,9 +113,6 @@ install_instance__apache() {
     ln -vfs -T /usr/share/rhizi/webapp/static/img    ${apache_module__rootdir}/webapp/static/img
     ln -vfs -T /usr/share/rhizi/webapp/static/lib    ${apache_module__rootdir}/webapp/static/lib
 
-    # populate fragment.d
-    cp /usr/share/rhizi/webapp/template.d/*            ${apache_module__rootdir}/webapp/fragment.d/template.d/
-
     # enable site
     ln -vfs -T /etc/apache2/sites-available/${apache_module__siteconf_filename} /etc/apache2/sites-enabled/${apache_module__siteconf_filename}
 }
@@ -128,7 +125,7 @@ install_instance__rhizi() { # depends on install_instance__apache()
                --directory ${rz_module__bkp}
 
     # install default fragments - JS
-    cp -v /usr/lib/rhizi/webapp/static/js/model/domain_types.js ${apache_module__rootdir}/webapp/fragment.d/js/
+    cp -vr /usr/share/rhizi/webapp/domain-fragment.d/default/* ${apache_module__rootdir}/webapp/fragment.d/
 
 }
 
@@ -185,9 +182,12 @@ case $1 in
         install_instance__neo4j
         install_instance__rhizi
 
+        # pass-on extra argument to python: install dom-x ...:
+        #    - opt: --rz_config__disable_access_control
+        if [ $# -ge 3 ] ; then shift 2; py_extra_args=$@ ; fi
         python /usr/lib/rhizi/tools/rz-mux/rz-mux-tool.py \
                --template-dir /usr/share/rhizi/rz-mux/ \
-               --domain ${RZI_NAME}
+               --domain ${RZI_NAME} ${py_extra_args}
 
         # set modes, ownership
         chmod +x ${RZI_NEO4J_INIT_SCRIPT_PATH}

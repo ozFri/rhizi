@@ -2,13 +2,13 @@
 Various test utilities
 """
 import json
+import string
 
 import db_controller as dbc
 from model.graph import Topo_Diff
 from model.model import Link, RZDoc
-from neo4j_test_util import gen_random_name, rand_label
-from neo4j_util import generate_random_id__uuid
-import neo4j_util
+from neo4j_test_util import rand_label
+from neo4j_util import generate_random_id__uuid, generate_random_rzdoc_id
 from rz_kernel import RZ_Kernel
 from rz_mesh import init_ws_interface
 from rz_server import init_webapp
@@ -29,6 +29,12 @@ def init_test_ws_server(cfg, db_ctl):
     webapp = init_webapp(cfg, kernel, db_ctl)
     ws_srv = init_ws_interface(cfg, webapp)
     return ws_srv
+
+def gen_random_name(size=8, char_set=string.ascii_uppercase + string.digits):
+    """
+    used for random node generation
+    """
+    return ''.join(random.choice(char_set) for _ in range(size))
 
 def generate_random_node_dict(n_type, nid=None):
     """
@@ -76,9 +82,17 @@ def generate_random_diff__topo__minimal(test_label):
 
 def generate_random_RZDoc(test_label):
     rzdoc = RZDoc(test_label)
-    rzdoc.id = neo4j_util.generate_random_rzdoc_id()
+    rzdoc.id = generate_random_rzdoc_id()
     return rzdoc
 
+def gen_random_user_signup(self):
+    seed = gen_random_name()
+    us_req = User_Signup_Request(rz_username='rz_username_%s' % (seed),
+                                 email_address='%s@localhost' % (seed),
+                                 first_name='firstname%s' % (seed),
+                                 last_name='lastname%s' % (seed),
+                                 pw_plaintxt='aaaa12345')
+    return us_req
 def ws_emit__topo_diff():
     import logging
 

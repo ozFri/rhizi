@@ -14,6 +14,7 @@ function Graph(spec) {
         id_to_link_map,
         id_to_link_id_set,
         diffBus = new Bacon.Bus(),
+        activityBus = new Bacon.Bus(),
         cached_links,
         invalidate_links = true,
         cached_nodes,
@@ -33,6 +34,10 @@ function Graph(spec) {
     // All operations done on the graph. When the server is used (i.e. always) this
     // bus contains the server events, not the user events (most of the time the same just with delay).
     this.diffBus = diffBus;
+
+    // Same as diffBus, but includes operations done in the past, loaded when
+    // the document is loaded (commit log)
+    this.activityBus = activityBus;
 
     var links_forEach = function (f) {
         for (var link_key in id_to_link_map) {
@@ -129,11 +134,7 @@ function Graph(spec) {
             return !hasNodeByName(n.name);
         });
 
-        var graph_on_error = function(error) {
-            console.log('error:');
-            console.dir(error);
-        }
-        rz_api_backend.commit_diff__topo(topo_diff, __commit_diff_ajax__topo, graph_on_error);
+        rz_api_backend.commit_diff__topo(topo_diff, __commit_diff_ajax__topo);
     }
     this.commit_and_tx_diff__topo = commit_and_tx_diff__topo;
 
@@ -245,6 +246,126 @@ function Graph(spec) {
                        ));
     }
 
+
+    /**
+     * Visitation constants for neighbourhood and shortest paths computation.
+     */
+    var kind_exit = 1,
+        kind_enter = 2,
+        kind_selected = 4;
+
+    function kind_to_string(kind) {
+        switch (kind) {
+        case kind_exit: return 'exit';
+        case kind_enter: return 'enter';
+        case kind_selected: return 'selected';
+        default:
+            // TODO: add css for both
+            return 'exit';
+        }
+    }
+
+    function BFS(node_id) {
+        var neighbours = calc_neighbours(),
+            queue = [node_id],
+            start_id,
+            node_ids = get_node_ids(),
+            V = _.object(node_ids, _.map(node_ids, function (id) {
+                return {node_id: id, distance: Infinity, prev: {}};
+            })),
+            ret = {};
+
+        V[node_id].distance = 0;
+        while ((start_id = queue.shift()) !== undefined) {
+            var src_ids = _.pluck(_.pluck(neighbours[start_id].src, "__dst"), "id"),
+                dst_ids = _.pluck(_.pluck(neighbours[start_id].dst, "__src"), "id"),
+                n_ids = src_ids.concat(dst_ids);
+
+            _.each(n_ids, function(next_id) {
+                var distance = V[start_id].distance + 1;
+
+                if (V[next_id].distance >= distance) {
+                    V[next_id].distance = distance;
+                    V[next_id].prev[start_id] = true;
+                    queue.push(next_id);
+                }
+            });
+        }
+        _.each(_.keys(V), function (k) {
+            if (V[k].distance !== Infinity) {
+                ret[k] = V[k];
+            }
+        });
+        return ret;
+    }
+    this.BFS = BFS;
+
+    /**
+     * pairs_symmetric
+     *
+     * cb will be called for every pair in the input list but only in the order
+     * lower_index, maybe_higher_index
+     * where lower_index <= maybe_higher_index (i.e. diagonal is covered).
+     *
+     * i.e. for |list| = N, (N + 1) * N / 2 calls are made
+     */
+    function pairs_symmetric(list, cb) {
+        var i, j, N = list.length;
+
+        for (i = 0 ; i < N; ++i) {
+            for (j = i; j < N ; ++j) {
+                cb(list[i], list[j]);
+            }
+        }
+    }
+
+    /**
+     * @sources - list of nodes
+     *
+     * returns all nodes in the shortest paths between all sources.
+     *
+     * returns same dictionary as neighbourhood.
+     */
+    function shortest_paths(sources) {
+
+        function make_status(node, distance, prev_nodes) {
+            return {node: node, distances: distance || 0, prev_nodes: prev_nodes || {}};
+        }
+        var ids = _.pluck(sources, 'id'),
+            bfs = _.object(ids, _.map(ids, BFS)),
+            nodes = {};
+
+        function append_paths(bfs, start_id) {
+            var queue = [bfs[start_id]],
+                next,
+                next_id;
+
+            while ((next = queue.shift()) !== undefined) {
+                next_id = next.node_id;
+                if (nodes[next_id] === undefined) {
+                    nodes[next_id] = {node_id: next_id, sources: {}};
+                }
+                _.each(_.keys(next.prev), function (p) {
+                    nodes[next_id].sources[p] = true;
+                    queue.push(bfs[p]);
+                });
+            }
+        }
+
+        pairs_symmetric(ids, function (one, two) {
+            if (bfs[one][two] !== undefined && bfs[one][two].distance === Infinity) {
+                return;
+            }
+            append_paths(bfs[one], two);
+        });
+
+        return {
+            'nodes': _.values(nodes),
+            'links': []
+        };
+    }
+    this.shortest_paths = shortest_paths;
+
     /**
      *
      * neighbourhood
@@ -308,11 +429,8 @@ function Graph(spec) {
         var nodes = get_nodes(),
             links = get_links(),
             neighbours = calc_neighbours(),
-            exit = 1,
-            enter = 2,
-            selected = 4,
             visited = _.object(_.map(start, get_name),
-                               _.map(start, _.partial(make_status, selected)));
+                               _.map(start, _.partial(make_status, kind_selected)));
 
         function visit(source, link, getter, kind, depth) {
             var node = getter(link),
@@ -329,25 +447,14 @@ function Graph(spec) {
             return data;
         }
 
-        function kind_to_string(kind) {
-            switch (kind) {
-            case exit: return 'exit';
-            case enter: return 'enter';
-            case selected: return 'selected';
-            default:
-                // TODO: add css for both
-                return 'exit';
-            }
-        }
-
         _.each(start, function (node) {
             var N = neighbours[node.id];
 
             _.each(N.src, function (link) {
-                visit(node, link, function (link) { return link.__dst; }, enter);
+                visit(node, link, function (link) { return link.__dst; }, kind_enter);
             });
             _.each(N.dst, function (link) {
-                visit(node, link, function (link) { return link.__src; }, exit);
+                visit(node, link, function (link) { return link.__src; }, kind_exit);
             });
         });
         _.values(visited).forEach(function (data) {
@@ -355,7 +462,7 @@ function Graph(spec) {
                 kind = data.kind,
                 links = data.links;
 
-            if ((kind & selected) === selected) {
+            if ((kind & kind_selected) === kind_selected) {
                 return;
             }
             ret.nodes.push({type: kind_to_string(kind), node: node, sources: data.sources});
@@ -761,6 +868,11 @@ function Graph(spec) {
     }
     this.find_node__by_id = find_node__by_id;
 
+    var find_nodes__by_id = function(ids, recursive) {
+        return _.map(ids, function (id) { return find_node__by_id(id, recursive); });
+    }
+    this.find_nodes__by_id = find_nodes__by_id;
+
     /**
      * @param filter: must return true in order for node to be included in the returned set
      */
@@ -906,12 +1018,17 @@ function Graph(spec) {
     }
 
     function __commit_diff_ajax__clone(clone) {
-        var node_specs = clone.node_set_add.map(on_backend__node_add),
+        var topo = clone[0],
+            commits = clone[1].reverse(), // [!] received in new to old order, need them reversed
+            node_specs = topo.node_set_add.map(on_backend__node_add),
             nodes = _add_node_set(node_specs),
-            link_specs = clone.link_set_add.map(on_backend__link_add).filter(function (link_spec) {
+            link_specs = topo.link_set_add.map(on_backend__link_add).filter(function (link_spec) {
                 return link_spec !== null;
             }),
             links = _add_link_set(link_specs);
+        commits.forEach(function (commit) {
+            activityBus.push(commit);
+        });
         diffBus.push({node_set_add: nodes, link_set_add: links});
     }
 
@@ -1042,18 +1159,14 @@ function Graph(spec) {
      * @param on_success: should be used by MVP presentors to trigger UI update
      */
     // @ajax-trans
-    function load_from_backend(on_success) {
+    function load_from_backend(on_success, on_error) {
 
-        function on_success__ajax(clone) {
+        function on_success_wrapper(clone) {
             __commit_diff_ajax__clone(clone);
             undefined != on_success && on_success();
         }
 
-        function on_error__ajax(clone) {
-           // FIXME: update status line with 'rzdoc not found' status
-        }
-
-        rz_api_backend.rzdoc_clone(on_success__ajax, on_error__ajax);
+        rz_api_backend.rzdoc_clone(on_success_wrapper, on_error);
     }
     this.load_from_backend = load_from_backend;
 
@@ -1161,6 +1274,11 @@ function Graph(spec) {
         return cached_nodes;
     };
     this.nodes = get_nodes;
+
+    var get_node_ids = function() {
+        return _.keys(id_to_node_map);
+    }
+    this.get_node_ids = get_node_ids;
 
     var get_links = function() {
         if (cached_links === undefined || invalidate_links) {

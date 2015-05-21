@@ -1,16 +1,13 @@
-import base64
 from copy import deepcopy
 import gzip
 import hashlib
-import json
 import logging
 import re
 
-import StringIO as sio
 from model.graph import Attr_Diff
 from model.graph import Topo_Diff
-from model.model import Link, RZDoc
-from neo4j_cypher import DB_Query, DB_result_set
+from model.model import Link, RZDoc, RZCommit
+from neo4j_cypher import DB_Query, DB_result_set, DB_Raw_Query
 import neo4j_schema
 from neo4j_util import cfmt
 from neo4j_util import generate_random_id__uuid, rzdoc__ns_label, \
@@ -207,7 +204,7 @@ class DBO_block_chain__commit(DB_op):
         ret = sha1.hexdigest()
         return ret
 
-    def __init__(self, commit_obj=None, ctx=None):
+    def __init__(self, commit_obj=None, ctx=None, meta=None):
         """
         @param commit_obj: serializable blob
 
@@ -215,7 +212,7 @@ class DBO_block_chain__commit(DB_op):
         """
         super(DBO_block_chain__commit, self).__init__()
 
-        blob = self._convert_to_blob(commit_obj)
+        blob = RZCommit.blob_from_diff_obj(commit_obj)
         hash_value = self.calc_blob_hash(blob)
 
         l_id = generate_random_id__uuid()
@@ -227,7 +224,7 @@ class DBO_block_chain__commit(DB_op):
                  'create (new_head)-[r:%s {link_attr}]->(old_head)' % (neo4j_schema.META_LABEL__VC_PARENT),
                  'remove old_head:%s' % (neo4j_schema.META_LABEL__VC_HEAD),
                  'set new_head.ts_created=timestamp()',
-                 'return {head_parent_commit: old_head, head_commit: new_head}'
+                 'return {head_parent_commit: old_head, head_commit: new_head, ts_created: new_head.ts_created}'
                  ]
 
         q_param_set = {'commit_attr': {'blob': blob,
@@ -244,33 +241,27 @@ class DBO_block_chain__commit(DB_op):
         self.l_id = l_id
 
         # create commit-[:__Authored-by]->__User link if possible
-        if None == ctx or None == ctx.user_name:
-            return
+        if None != ctx and None != ctx.user_name:
+            self.add_statement(self._add_statement__authored_by(ctx.user_name))
 
-        q_arr = ['merge (n:%s {user_name: \'%s\'})' % (neo4j_schema.META_LABEL__USER, ctx.user_name),
-                 'with n',
-                 'match (m:%s)' % (neo4j_schema.META_LABEL__VC_HEAD),  # FIXME: specify commit-label index
-                 'create (m)-[r:`%s`]->(n)' % (neo4j_schema.META_LABEL__VC_COMMIT_AUTHOR),
-                 ]
-        self.add_statement(q_arr)
+        if None != meta and 'sentence' in meta and meta['sentence'] != '':
+            self.add_statement(self._add_statement__result_of_sentence(ctx.user_name, meta['sentence']))
 
-    def _convert_to_blob(self, obj):
-        """
-        @return: blob = base64(gzip(json.dumps(obj)))
-        """
-        obj_str = json.dumps(obj)
-        blob_gzip = self._gzip_compress_string(obj_str)
-        blob_base64 = base64.encodestring(blob_gzip)
+    def _add_statement__authored_by(self, user_name):
+        return ['merge (n:%s {user_name: \'%s\'})' % (neo4j_schema.META_LABEL__USER, user_name),
+                'with n',
+                'match (m:%s)' % (neo4j_schema.META_LABEL__VC_HEAD),  # FIXME: specify commit-label index
+                'create (m)-[r:`%s`]->(n)' % (neo4j_schema.META_LABEL__VC_COMMIT_AUTHOR),
+                ]
 
-        return blob_base64
-
-    def _gzip_compress_string(self, input_string):
-        out = sio.StringIO()
-        with gzip.GzipFile(fileobj=out, mode='wb') as f:
-            f.write(input_string)
-
-        ret = out.getvalue()
-        return ret
+    def _add_statement__result_of_sentence(self, user_name, sentence):
+        return ['match (head:%s:%s)' % (neo4j_schema.META_LABEL__VC_HEAD,
+                                        neo4j_schema.META_LABEL__VC_COMMIT),
+                'create (head)-[r:%s]->(result_of:%s {sentence: \'%s\'} )' % (
+                neo4j_schema.META_LABEL__VC_COMMIT_RESULT_OF,
+                neo4j_schema.META_LABEL__VC_OPERATION,
+                sentence,
+                )]
 
     def process_result_set(self):
         """
@@ -280,15 +271,18 @@ class DBO_block_chain__commit(DB_op):
 
         hash_parent = None
         hash_child = None
+        ts_created = None
         for _, _, r_set in self.iter__r_set():
             for row in r_set:
                 for ret_dict in row:
 
                     assert None == hash_parent  # assert hash values set once only
                     assert None == hash_child
+                    assert None == ts_created
 
                     hash_parent = ret_dict['head_parent_commit']['hash']
                     hash_child = ret_dict['head_commit']['hash']
+                    ts_created = ret_dict['ts_created']
 
         ret.node_set_add = [{'id': self.n_id,
                              '__label_set': ['__Commit']}
@@ -297,6 +291,7 @@ class DBO_block_chain__commit(DB_op):
         l['id'] = self.l_id
         l['__type'] = '__Parent'
         ret.link_set_add = [l]
+        ret.meta['ts_created'] = ts_created
         return ret
 
 class DBO_block_chain__init(DB_op):
@@ -360,13 +355,30 @@ class DBO_block_chain__list(DB_op):
                 for col in row:
                     return col
 
-class DBO_cypher_query(DB_op):
+class DBO_raw_query_set(DB_op):
     """
-    freeform cypher query
+    Freeform set of DB query statements
+
+    [!] use of this class is discouraged and should be done
+        only when no other DB_op is able to handle the task
+        at hand
     """
-    def __init__(self, q, q_params={}):
-        super(DBO_cypher_query, self).__init__()
-        self.add_statement(q, q_params)
+    def __init__(self, q_arr=None, q_params={}):
+        super(DBO_raw_query_set, self).__init__()
+
+        if q_arr is not None:
+            self.add_statement(q_arr, q_params)
+
+    def add_statement(self, q_arr, query_params={}):
+        """
+        super.add_statement() override: use raw queries
+        """
+        db_q = DB_Raw_Query(q_arr, query_params)
+        self.query_set.append(db_q)
+        return len(self.query_set)
+
+    def add_db_query(self, db_q):
+        assert False, 'DBO_raw_query_set only supports raw queries - use add_statement()'
 
 class DBO_diff_commit__topo(DB_composed_op):
 
@@ -771,6 +783,55 @@ class DBO_rzdb__init_DB(DB_composed_op):
         if isinstance(prv_sub_op, DBO_rzdb__fetch_DB_metablock) and prv_sub_op_ret is not None:
             raise Exception('DB contains metadata, aborting initialization of pre-initialized DB')
 
+class DBO_rzdoc__commit_log(DB_op):
+
+    def __init__(self, limit):
+        """
+        return last @limit commits including the operations that caused them
+        """
+        super(DBO_rzdoc__commit_log, self).__init__()
+        self.limit = limit
+
+        q_arr = ['match (n:%s)' % (
+                    neo4j_schema.META_LABEL__VC_HEAD,
+                 ),
+                 'match (n)-[:%s*0..%s]->(c)' % (
+                    neo4j_schema.META_LABEL__VC_PARENT,
+                    limit - 1,
+                 ),
+                 'optional match (c)-[:%s]->(o:%s)' % (
+                    neo4j_schema.META_LABEL__VC_COMMIT_RESULT_OF,
+                    neo4j_schema.META_LABEL__VC_OPERATION,
+                 ),
+                 'optional match (c)-[:`%s`]->(u:%s)' % (
+                    neo4j_schema.META_LABEL__VC_COMMIT_AUTHOR,
+                    neo4j_schema.META_LABEL__USER,
+                 ),
+                 'return collect([c, o, u])']  # since o is optional we need to pair them
+
+        db_q = DB_Query(q_arr)
+        self.add_db_query(db_q)
+
+    def process_result_set(self):
+        ret = []
+        # break out the blobs, return them - binary all the way home
+        for _, _, r_set in self.iter__r_set():
+            for row in r_set:
+                pairs = row.items()[0]  # see query return statement
+                for commit, operation, user in pairs:
+                    if commit['blob'] == '':
+                        # root commit, done
+                        break
+                    # TODO: get author
+                    diff = RZCommit.diff_obj_from_blob(commit['blob'])
+                    diff['meta'] = dict(ts_created=commit['ts_created'],
+                                        author='Anonymous' if user is None else user['user_name'],
+                                        commit=commit['hash'],
+                                        )
+                    if None is not operation and 'sentence' in operation:
+                        diff['meta']['sentence'] = operation['sentence']
+                    ret.append(diff)
+        return ret
 
 class DBO_rzdoc__clone(DB_op):
 
@@ -850,11 +911,11 @@ class DBO_rzdoc__create(DB_op):
         #
         # setup rzdoc node
         #
-        q_arr = ['merge (n:%s {id: {id}, name: {name}})' % (neo4j_schema.META_LABEL__RZDOC_TYPE),
+        q_arr = ['create (n:%s {rzdoc_attr})' % (neo4j_schema.META_LABEL__RZDOC_TYPE),
                  'return n.id, n.name']
 
-        param_set = {'id': rzdoc.id,
-                     'name': rzdoc.name}
+        param_set = {'rzdoc_attr': {'id': rzdoc.id,
+                                    'name': rzdoc.name}}
 
         db_q = DB_Query(q_arr, param_set)
         self.add_db_query(db_q)
@@ -884,7 +945,6 @@ class DBO_rzdoc__delete(DB_op):
                  'delete r,n']
         db_q = DB_Query(q_arr)
         self.add_db_query(db_q)
-
 
 class DBO_rzdoc__list(DB_op):
 

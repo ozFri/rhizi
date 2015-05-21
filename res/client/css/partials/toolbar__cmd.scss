@@ -17,6 +17,8 @@
 }
 
 .cmd-bar_btn {
+    border-radius: 2px; // TODO: generalize via .toolbar__btn
+    box-shadow: 0px 1px 1px 0px rgba(0, 0, 0, 0.5);
     cursor: pointer;
     color: white;
     padding: 2px 8px;
@@ -41,25 +43,11 @@
     background-color: yellowgreen;
 }
 
-#cmd_bar__rzdoc_new__submit_error {
-    color: red;
-    margin-left: 5px;
-}
-
 #cmd_bar__rzdoc_open {
 }
 
 #cmd_bar__rzdoc_open__rzdoc_list {
     overflow: auto;
-}
-
-#cmd_bar__rzdoc_close {
-    border-bottom-left-radius: 6px;
-    background-color: dimgray;
-    font-family: fantasy;
-    font-size: 12px;
-    position: absolute;
-    right: 0px;
 }
 
 .cmd_bar__rzdoc_open__item {

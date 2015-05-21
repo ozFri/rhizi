@@ -14,7 +14,7 @@ from db_op import (DBO_diff_commit__attr, DBO_block_chain__commit, DBO_rzdoc__cr
     DBO_block_chain__init, DBO_rzdoc__rename, DBO_nop,
     DBO_match_node_set_by_id_attribute, DBO_rzdb__fetch_DB_metablock,
     DBO_rzdb__init_DB)
-from db_op import DBO_diff_commit__topo
+from db_op import DBO_diff_commit__topo, DBO_rzdoc__commit_log
 from model.graph import Topo_Diff
 from model.model import RZDoc
 from neo4j_qt import QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
@@ -27,6 +27,7 @@ class RZDoc_Exception__not_found(Exception):
 
     def __init__(self, rzdoc_name):
         super(RZDoc_Exception__not_found, self).__init__('rzdoc not found: \'%s\'' % (rzdoc_name))
+        self.rzdoc_name = rzdoc_name
 
 class RZDoc_Exception__already_exists(Exception):
 
@@ -190,7 +191,7 @@ class RZ_Kernel(object):
         self.cache__rzdoc_name_to_rzdoc[rzdoc_name] = rz_doc
         return rz_doc
 
-    def diff_commit__topo(self, topo_diff, ctx=None):
+    def diff_commit__topo(self, topo_diff, ctx):
         """
         commit a graph topology diff - this is a common pathway for:
            - RESP API calls
@@ -204,10 +205,13 @@ class RZ_Kernel(object):
         op = QT_RZDOC_NS_Filter(rzdoc)(op)
 
         op_ret = self.db_ctl.exec_op(op)
-        self.exec_chain_commit_op(topo_diff, ctx)
+        ts_created = self.exec_chain_commit_op(topo_diff, ctx, topo_diff.meta)
+        topo_diff.meta['author'] = ctx.user_name
+        topo_diff.meta['ts_created'] = ts_created
+        op_ret['meta'] = topo_diff.meta
         return topo_diff, op_ret
 
-    def diff_commit__attr(self, attr_diff, ctx=None):
+    def diff_commit__attr(self, attr_diff, ctx):
         """
         commit a graph attribute diff - this is a common pathway for:
            - RESP API calls
@@ -221,10 +225,12 @@ class RZ_Kernel(object):
         op = QT_RZDOC_NS_Filter(rzdoc)(op)
 
         op_ret = self.db_ctl.exec_op(op)
-        self.exec_chain_commit_op(attr_diff, ctx)
+        ts_created = self.exec_chain_commit_op(attr_diff, ctx)
+        attr_diff.meta['author'] = ctx.user_name
+        attr_diff.meta['ts_created'] = ts_created
         return attr_diff, op_ret
 
-    def exec_chain_commit_op(self, diff_obj, ctx):
+    def exec_chain_commit_op(self, diff_obj, ctx, meta=None):
 
         # FIXME: clean
         if isinstance(diff_obj, Topo_Diff):
@@ -233,9 +239,10 @@ class RZ_Kernel(object):
             commit_obj = diff_obj
 
         rzdoc = ctx.rzdoc
-        op = DBO_block_chain__commit(commit_obj, ctx)
+        op = DBO_block_chain__commit(commit_obj, ctx, meta)
         op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
-        self.db_ctl.exec_op(op)
+        op_ret = self.db_ctl.exec_op(op)
+        return op_ret.meta['ts_created']
 
     def load_node_set_by_id_attr(self, id_set, ctx=None):
         op = DBO_match_node_set_by_id_attribute(id_set=id_set)
@@ -275,7 +282,7 @@ class RZ_Kernel(object):
                 rm_target = r_assoc
 
         if None == rm_target:  # target possibly removed after becoming stale
-            log.debug("rz_kernel: rzdoc__reader_unsubscribe: assoc not found: remote-address: " % (remote_socket_addr))
+            log.debug("rz_kernel: rzdoc__reader_unsubscribe: assoc not found: remote-address: %s" % (remote_socket_addr))
             return
 
         r_assoc_set.remove(rm_target)  # FIXME: make thread safe
@@ -297,6 +304,16 @@ class RZ_Kernel(object):
 
         topo_diff = self.db_ctl.exec_op(op)
         return topo_diff
+
+    def rzdoc__commit_log(self, rzdoc, limit):
+        """
+        return commit log
+        """
+        op = DBO_rzdoc__commit_log(limit=limit)
+        op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
+
+        commit_log = self.db_ctl.exec_op(op)
+        return commit_log
 
     def rzdoc__create(self, rzdoc_name, ctx=None):
         """

@@ -10,7 +10,8 @@
 # General
 #
 root_path = {{ root_path }}
-template_d_path = {{ template_d_path }}
+fragment_d_path = /fragment.d
+template_d_path = /fragment.d/template.d
 
 development_mode = True
 static_url_path = /static
@@ -52,9 +53,10 @@ feedback_recipient = feedback@localhost
 # -----------------------------------------------------------------------------
 # Security
 #
-access_control = True
+access_control = {{ access_control }}
 user_db_path = {{ user_db_path }}
-acl__singup__email_domain =
+acl_wl__email_domain_set =
+acl_wl__email_address_file_path =
 
 # -----------------------------------------------------------------------------
 # Client settings

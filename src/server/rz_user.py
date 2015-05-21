@@ -14,7 +14,9 @@ import uuid
 from crypt_util import hash_pw
 from rz_api_common import API_Exception__bad_request
 from rz_mail import send_email__flask_ctx
-from rz_req_handling import make_response__json, make_response__json__html
+from rz_req_handling import make_response__json, make_response__json__html, \
+    HTTP_STATUS__400_BAD_REQUEST, HTTP_STATUS__500_INTERNAL_SERVER_ERROR, \
+    HTTP_STATUS__200_OK, HTTP_STATUS__401_UNAUTORIZED
 
 
 log = logging.getLogger('rhizi')
@@ -152,14 +154,14 @@ def rest__login():
             email_address, p = sanitize_input(request)
         except:
             log.warn('failed to sanitize inputs. request: %s' % request)
-            return make_response__json(status=401)  # return empty response
+            return make_response__json(status=HTTP_STATUS__401_UNAUTORIZED)  # return empty response
 
         u_account = None
         try:
             _uid, u_account = current_app.user_db.lookup_user__by_email_address(email_address)
         except:
             log.warn('login: login attempt to unknown account: email_address: \'%s\'' % (email_address))
-            return make_response__json(status=401)  # return empty response
+            return make_response__json(status=HTTP_STATUS__401_UNAUTORIZED)  # return empty response
 
         try:
             salt = current_app.rz_config.secret_key
@@ -168,12 +170,12 @@ def rest__login():
         except Exception as e:
             # login failed
             log.warn('login: unauthorized: user: %s' % (email_address))
-            return make_response__json(status=401)  # return empty response
+            return make_response__json(status=HTTP_STATUS__401_UNAUTORIZED)  # return empty response
 
         # login successful
         session['username'] = email_address
         log.debug('login: success: user: %s' % (email_address))
-        return make_response__json(status=200)  # return empty response
+        return make_response__json(status=HTTP_STATUS__200_OK)  # return empty response
 
     if request.method == 'GET':
         return render_template('login.html', signup_enabled=current_app.rz_config.signup_enabled)
@@ -279,7 +281,7 @@ def rest__pw_reset():
             if None == pw_rst_req:
                 # request expired & already removed OR bad token
                 log.warning('pw reset: request not found or bad token: remote-address: %s' % (request.remote_addr))
-                return make_response__json__html(status=500, html_str=html_err__tech_difficulty)
+                return make_response__json__html(status=HTTP_STATUS__500_INTERNAL_SERVER_ERROR, html_str=html_err__tech_difficulty)
 
             # perform pw update
             uid, u_account = user_db.lookup_user__by_email_address(pw_rst_req.u_account.email_address)
@@ -298,7 +300,7 @@ def rest__pw_reset():
                 uid, u_account = user_db.lookup_user__by_email_address(email_address)
             except Exception as _:
                 log.exception('pw reset request for non-existing account: email_address: %s' % (email_address))
-                return make_response__json__html(status=500, html_str=html_err__tech_difficulty)
+                return make_response__json__html(status=HTTP_STATUS__500_INTERNAL_SERVER_ERROR, html_str=html_err__tech_difficulty)
 
             if None != pw_rst_req_map.get(email_address):  # probe for pending requests
                 return make_response__json__html(html_str=html_ok__already_pending)
@@ -316,10 +318,10 @@ def rest__pw_reset():
                 return make_response__json__html(html_str=html_ok__submitted)
 
             except Exception as _:
-                return make_response__json__html(status=500, html_str=html_err__tech_difficulty)
+                return make_response__json__html(status=HTTP_STATUS__500_INTERNAL_SERVER_ERROR, html_str=html_err__tech_difficulty)
 
         else:  # weird state: missing / unnecessary post fields
-            return make_response__json__html(status=500, html_str=html_err__tech_difficulty)
+            return make_response__json__html(status=HTTP_STATUS__500_INTERNAL_SERVER_ERROR, html_str=html_err__tech_difficulty)
 
 def rest__user_signup():
     """
@@ -393,7 +395,7 @@ def rest__user_signup():
     html_ok__submitted = '<p>Your request has been successfully submitted.<br>Please check your email to activate your account.</p>'
     html_ok__already_pending = '<p>Your request has already been submitted.<br>Please check your email to activate your account.</p>'
     html_err__tech_difficulty = '<p>We are experiencing technical difficulty processing your request,<br>Please try again later.</p>'
-    html_err__acl__singup__email_domain = '<p>Signup requires a \'@%s\' domain email account.<br>Please obtain one to proceed.</p>'
+    html_err__acl__singup = '<p>Invalid email: \'%s\'. Please use an email account from the following domains or contact an administrator: %s.</p>'
 
     # use incoming request as house keeping trigger
     us_req_map = get_or_init_usreq_map()
@@ -407,25 +409,28 @@ def rest__user_signup():
             us_req = sanitize_and_validate_input(request)
         except API_Exception__bad_request as e:
             log.exception(e)
-            return make_response__json__html(status=400, html_str='<p>%s</p>' % (e.caller_err_msg))
+            return make_response__json__html(status=HTTP_STATUS__400_BAD_REQUEST, html_str='<p>%s</p>' % (e.caller_err_msg))
         except Exception as e:
             log.exception(e)
-            return make_response__json__html(status=400, html_str=html_err__tech_difficulty)
+            return make_response__json__html(status=HTTP_STATUS__400_BAD_REQUEST, html_str=html_err__tech_difficulty)
 
         # FIXME: implement form validation
 
         # probe for existing request
-        existing_req = us_req_map.get(us_req['email_address'])
+        req_email_address = us_req['email_address']
+        existing_req = us_req_map.get(req_email_address)
         if None != existing_req:
             # already pending
             log.warning('user signup: request already pending: %s' % (existing_req))
-            return make_response__json__html(status=200, html_str=html_ok__already_pending)
+            return make_response__json__html(status=HTTP_STATUS__200_OK, html_str=html_ok__already_pending)
 
-        # validate email against ACL:email_domain
-        acl__singup__email_domain = current_app.rz_config.acl__singup__email_domain
-        if current_app.rz_config.access_control and acl__singup__email_domain is not None:
-            if us_req['email_address'].split('@')[-1].lower() != acl__singup__email_domain:
-                return make_response__json__html(status=500, html_str=html_err__acl__singup__email_domain % (acl__singup__email_domain))
+        # match email if access_control is enabled and at least one ACL was provided
+        rz_config = current_app.rz_config
+        if rz_config.access_control:
+            if rz_config.acl_wl__email_domain_set is not None or \
+               rz_config.acl_wl__email_address_set is not None:
+                if False == acl_wl_match__email_address(req_email_address):
+                    return make_response__json__html(status=HTTP_STATUS__400_BAD_REQUEST, html_str=html_err__acl__singup % (req_email_address, current_app.rz_config.acl_wl__email_domain_set))
 
         us_req['submission_date'] = datetime.now()
         us_req['validation_key'] = generate_security_token()
@@ -440,7 +445,7 @@ def rest__user_signup():
             return make_response__json__html(html_str=html_ok__submitted)
         except Exception as e:
             log.exception('user sign-up: failed to send validation email')  # exception derived from stack
-            return make_response__json__html(status=500, html_str=html_err__tech_difficulty)
+            return make_response__json__html(status=HTTP_STATUS__500_INTERNAL_SERVER_ERROR, html_str=html_err__tech_difficulty)
 
     if request.method == 'GET':
 
@@ -529,3 +534,30 @@ def send_user_pw_reset__email(req__url_root, u_account, pw_reset_token):
                        subject="Rhizi password reset request",
                        body=msg_body)
     return pw_reset_link
+
+def acl_wl_match__email_address(sanitized_email_address):
+    """
+    Match email against domain ACL / email_list ACL
+
+    @param sanitized_email_address is a sanitized valid email address
+    @return: True if email passed ACL check
+    """
+
+    em_sender, em_domain = sanitized_email_address.lower().split('@')
+
+    # match against domain list
+    if current_app.rz_config.acl_wl__email_domain_set is not None:
+        domain_set = current_app.rz_config.acl_wl__email_domain_set.split(',')
+        domain_set = [domain.strip() for domain in domain_set]  # strip whitespace chars
+        if em_domain in domain_set:
+            return True
+
+    # match against email list
+    if current_app.rz_config.acl_wl__email_address_set is not None:
+        email_address_set = current_app.rz_config.acl_wl__email_address_set
+        email_address_set = [email_address.strip() for email_address in email_address_set]  # strip whitespace chars
+
+        if '%s@%s' % (em_sender, em_domain) in email_address_set:
+            return True
+
+    return False

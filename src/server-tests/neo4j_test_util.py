@@ -1,13 +1,12 @@
 from random import choice
-import random
 import string
 import uuid
 
-from db_op import DB_op, DBO_cypher_query
+from db_op import DB_op, DBO_raw_query_set
 import neo4j_cypher
 import neo4j_schema
 
-class DBO_flush_db(DBO_cypher_query):
+class DBO_flush_db(DBO_raw_query_set):
     """
     complete DB flush: remove all nodes & links
     """
@@ -53,12 +52,6 @@ class DBO_random_data_generation(DB_op):
     @property
     def link_set_label(self):
         return self.r_label
-
-def gen_random_name(size=8, char_set=string.ascii_uppercase + string.digits):
-    """
-    used for random node generation
-    """
-    return ''.join(random.choice(char_set) for _ in range(size))
 
 def rand_label(prefix='T_', length=8):
     """

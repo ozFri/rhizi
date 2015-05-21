@@ -36,9 +36,10 @@ var RZ_VERSION = '{% include "version.txt" %}';
            <span id="profile-circle"></span>
            <span class="profile-username">Hello&nbsp;<span id="user_id">{{ rz_username }}</span>!<span id="btn-logout" class="button">Logout</span></span>
       </span>
-      <span class="logo-3rd-party"><a tabindex="-1" href="http://cri-paris.org/"><img id="logo-3rd-party__CRI" src="/static/img/CRI-logo.png"></a></span>
+      <span class="site-logo"><a tabindex="-1"><img id="site-logo" src="{{ fragment_d_path }}/img/site-logo.png"></a></span>
     </span>
   </div>
+  <div id="status-bar" style="display:none"></div>
   <div id="intro-task" class="task-alert" style="display:none">
     <span class="task-desc">Connect yourself to the clubs, internship proposals, skills &amp; scientific interests you have.</span>
     <span class="task-close-button">got it</span>
@@ -79,6 +80,10 @@ var RZ_VERSION = '{% include "version.txt" %}';
           <button tabindex="-1" id="btn_add"></button>
         <div id="input-suggestion" class="suggestion" style="display: none"></div>
 	<!--        <div id="input-suggestion2" class="suggestion" style="display: none"></div> -->
+        <div id="activity_view">
+          <div id="activity_view__header">Activity</div>
+          <div id="activity_view__body" style="display:none"></div>
+        </div>
       </div>
     </div>
     <div class="info-container" style="display:none">

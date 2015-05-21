@@ -9,8 +9,11 @@ from rz_kernel import RZDoc_Exception__not_found
 
 
 HTTP_STATUS__101_SWITCHING_PROTOCOLS = 101
+HTTP_STATUS__200_OK = 201
 HTTP_STATUS__201_CREATED = 201
 HTTP_STATUS__204_NO_CONTENT = 204
+HTTP_STATUS__400_BAD_REQUEST = 400
+HTTP_STATUS__401_UNAUTORIZED = 401
 HTTP_STATUS__500_INTERNAL_SERVER_ERROR = 500
 
 log = logging.getLogger('rhizi')
@@ -69,7 +72,7 @@ def common_rest_req_exception_handler(rest_API_endpoint):
             return common_resp_handle__client_error(error=e)  # currently blame client for all DNFs
         except RZDoc_Exception__not_found as e:
             log.exception(e)
-            return common_resp_handle__client_error(error=e)  # currently blame client for all DNFs
+            return common_resp_handle__client_error(data={'rzdoc_name': e.rzdoc_name}, error=e)  # currently blame client for all DNFs
         except Exception as e:
             log.exception(e)
             return common_resp_handle__server_error(error=e)
