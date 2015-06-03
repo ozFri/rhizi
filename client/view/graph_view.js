@@ -406,7 +406,7 @@ function GraphView(spec) {
     }
 
     function nodes__visible() {
-        return zen_mode ? selection.related_nodes() : nodes__filtered();
+        return /*zen_mode ? selection.related_nodes() :*/ nodes__filtered();
     }
 
     function links__filtered() {
@@ -414,7 +414,7 @@ function GraphView(spec) {
     }
 
     function links__visible() {
-        return zen_mode ? graph.find_links__by_nodes(selection.related_nodes()) : links__filtered();
+        return /* zen_mode ? graph.find_links__by_nodes(selection.related_nodes()) : */ links__filtered();
     }
 
     function node__transform(d) {
@@ -751,8 +751,8 @@ function GraphView(spec) {
             })
             .attr('x', '0%')
             .attr('y', '0%')
-            .attr('width', '100%')
-            .attr('height', '100%')
+            .attr('width', '83%')
+            .attr('height', '35%')
                 .insert('feImage')
                 .attr('class', 'nodefilter_feimage')
                 .attr('id', function (d) { return feimage_id(d.id); });

@@ -220,6 +220,13 @@ function neighbours(nodes) {
     return _select_nodes_helper(nodes, connected);
 };
 
+function homies(nodes) {
+    var connected = get_main_graph().neighbourhood(nodes, 1);
+    var secondneighbourshelper= _.pluck(connected.nodes,"node");
+    var secondneighbours =get_main_graph().neighbourhood(secondneighbourshelper, 1);    
+    connected = $.extend(true, {}, connected, secondneighbours);
+    return _select_nodes_helper(nodes, connected);
+};
 var node_related = function(node) {
     return related_nodes__by_id[node.id] !== undefined ||
            related_links__by_node_id[node.id] !== undefined;
@@ -295,7 +302,7 @@ var select_nodes = function(nodes, keep_selected_links)
 
 var select_both = function(new_nodes, new_links)
 {
-    var related = new_nodes.length == 1 ? neighbours(new_nodes) : shortest_paths(new_nodes);
+    var related = new_nodes.length == 1 ? homies(new_nodes) : shortest_paths(new_nodes);
 
     inner_select(new_nodes, related.nodes, new_links, related.links);
 }
