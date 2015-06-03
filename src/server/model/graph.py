@@ -2,7 +2,7 @@ import json
 
 class Attr_Diff(dict):
     """
-    Represents a change to note attributes, where nodes can represent
+    Represents a change to node attributes, where nodes can represent
     either logical nodes or logical links, and attributes can be added,
     changed or removed
     

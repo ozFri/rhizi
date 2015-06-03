@@ -913,19 +913,42 @@ p {
   float: right; }
 
 #activity_view {
-  bottom: 0px;
+  bottom: 10px;
   cursor: pointer;
+  background-color: transparent;
   position: fixed;
-  width: 35%; }
+  width: 50%;
+  margin: }
 
 #activity_view__body {
-  background-color: transparent;
+  background-color: rgba(1, 1, 1, 0.3);
   max-height: 110px;
   overflow-y: auto; }
 
 #activity_view__header {
-  background-color: rgba(1, 1, 1, 0.3);
+  background-color: rgba(1, 1, 1, 0.5);
   border-radius: 3px 3px 0 0;
+  text-align: center; }
+
+  
+#user_notifications_view {
+  margin-left: 40% ;
+  margin-right: 20%;
+  cursor: pointer; 
+  background-color: transparent;
+  position: fixed;
+  width: 35%; }
+
+#user_notifications__body {
+  background-color: rgba(1, 1, 1, 0.3);
+  max-height: 110px;
+  overflow-y: auto;
+ }
+
+#user_notifications__header {
+  background-color: rgba(100,100 , 200, 0.8);
+  border-radius: 3px 3px 0 0;
+  width: 5%;
   text-align: center; }
 
 .graph-view {
@@ -1431,7 +1454,13 @@ p {
   font-size: 18px; }
 
 #graph-view__canvas {
-  height: inherit; }
+  height: 35%;  
+  margin-top: 150px;
+  margin-right: 200px;
+  margin-left: 200px;
+  border: solid teal;
+  border-width: 2px;
+ }
 
 .insideforeign {
   display: inline; }

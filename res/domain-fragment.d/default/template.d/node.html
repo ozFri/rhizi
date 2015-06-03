@@ -1,49 +1,4 @@
-{% extends "base.html" %}
-{% block title %}{{ rz_config__rzdoc_cur__name|safe }} -- Rhizi Prototype{% endblock %}
-{% block head %}
-{{ super() }}
-<link href="/static/css/feedback.css" rel="stylesheet" type="text/css">
-<script>
-var rz_config = { // set as a global variable
-    'backend_enabled': true,
-    'backend__maintain_ws_connection': true,
-    'role_set': {{ rz_config__role_set|safe }},
-    'feedback_url': '/feedback',
-    'node_edge_separator': true,
-    'optimized_main': {{ rz_config__optimized_main }},
-    'rand_id_generator' : 'hash',
-    'rzdoc_cur__name': "{{ rz_config__rzdoc_cur__name|safe }}",
-    'rzdoc__mainpage_name': '{{ rz_config__rzdoc__mainpage_name }}',
-    'separator_string': '  ',
-};
-
-var RZ_VERSION = '{% include "fragment/version.txt" %}';
-</script>
-<script data-main='/static/app.js' src="/static/lib/require.js"></script>
-<script src="/static/local_config.js"></script>
-{% endblock %}
-{% block content %}
-  <div class="top-bar">
-    <span id="top-bar_float-left">
-      <div id="rzdoc-bar">
-        <span id="rzdoc-bar_doc-label"></span>
-        <span class="tool_bar_btn" id="btn_rzdoc__new" title="New"></span>
-        <span class="tool_bar_btn" id="btn_rzdoc__open" title="Open"></span>
-      </div>
-    </span>
-    <span id="top-bar_float-right">
-      <span class="top-bar__user-area">
-           <span id="profile-circle"></span>
-           <span class="profile-username">Hello&nbsp;<span id="user_id">{{ rz_username }}</span>!<span id="btn-logout" class="button">Logout</span></span>
-      </span>
-      <span class="logo-3rd-party"><a tabindex="-1" href="http://cri-paris.org/"><img id="logo-3rd-party__CRI" src="/static/img/CRI-logo.png"></a></span>
-    </span>
-  </div>
-  <div id="intro-task" class="task-alert" style="display:none">
-    <span class="task-desc">Connect yourself to the clubs, internship proposals, skills &amp; scientific interests you have.</span>
-    <span class="task-close-button">got it</span>
-  </div>
-  <div class="graph-view">
+<div class="graph-view">
     <div id="tool-bar">
       <div id="tool-bar-top-bar">
         <div class="tool_bar_btn" id="btn_layout" title="Layout">Layout</div>
@@ -158,9 +113,4 @@ var RZ_VERSION = '{% include "fragment/version.txt" %}';
 
 
     </div>
-   <input class="input-bar" id="comment" placeholder="speak"/>
   </div>
-  <div class="rhizi-logo"><a tabindex="-1" href="http://www.rhizi.org">
-    <img src="/static/img/rhizi-logo.png"/></a>
-  </div>
-{% endblock %}

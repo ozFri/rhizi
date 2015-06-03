@@ -25,24 +25,48 @@ var RZ_VERSION = '{% include "version.txt" %}';
 {% block content %}
   <div class="top-bar">
     <span id="top-bar_float-left">
-      <div id="rzdoc-bar">
+<!--      <div id="rzdoc-bar">
         <span id="rzdoc-bar_doc-label"></span>
         <span class="tool_bar_btn" id="btn_rzdoc__new" title="New"></span>
         <span class="tool_bar_btn" id="btn_rzdoc__open" title="Open"></span>
-      </div>
+      </div> -->
     </span>
     <span id="top-bar_float-right">
       <span class="top-bar__user-area">
            <span id="profile-circle"></span>
            <span class="profile-username">Hello&nbsp;<span id="user_id">{{ rz_username }}</span>!<span id="btn-logout" class="button">Logout</span></span>
+
+ 
       </span>
       <span class="site-logo"><a tabindex="-1"><img id="site-logo" src="{{ fragment_d_path }}/img/site-logo.png"></a></span>
     </span>
+          <div id="user_notifications_view">
+              <div id="user_notifications__header"><div id="notification_window" >0<div id="notifications"></div></div></div>
+          <div id="user_notifications__body" style= "display: none"></div>
+        </div>
   </div>
   <div id="status-bar" style="display:none"></div>
   <div id="intro-task" class="task-alert" style="display:none">
     <span class="task-desc">Connect yourself to the clubs, internship proposals, skills &amp; scientific interests you have.</span>
     <span class="task-close-button">got it</span>
+  </div>
+  <div id="input-box-set-container">
+      <div class="input-container" id="input-container__search">
+          <input class="input-bar" tabindex="1" id="search" placeholder="Search and select nodes"/>
+          <button tabindex="-1" id="btn_search"></button>
+          <div id="selection-count"></div>
+        <div id="search-suggestion" class="suggestion" style="display: none"></div>
+      </div>
+      <div class="input-container" id="input-container__graph-input">
+          <div contentEditable="true" tabindex="2" class="input input-bar" id="textanalyser" placeholder="Add nodes or links" autofocus ></div>
+          <button tabindex="-1" id="btn_add"></button>
+        <div id="input-suggestion" class="suggestion" style="display: none"></div>
+        <div id="input-suggestion2" class="suggestion" style="display: none"></div>
+        <div id="activity_view" >
+          <div id="activity_view__header">Activity</div>
+          <div id="activity_view__body" style= "display: none"></div>
+        </div>
+      </div>
   </div>
   <div class="graph-view">
     <div id="tool-bar">
@@ -60,32 +84,16 @@ var RZ_VERSION = '{% include "version.txt" %}';
         <div id="tool-bar-multiple-node-operations" style="display: none">
           <div class="tool_bar_btn" id="btn_link_fan" title="Link nodes in fan">Connect</div>
           <div class="tool_bar_btn" id="btn_merge" title="Merge nodes">Merge</div>
-        </div>
+	    </div>
       </div>
-    </div>
+    </div> 
     <div id="zoom-bar">
       <div id="btn_zoom_to_selection" title="Zoom to selection"></div>
       <div id="btn_zoom_in" title="Zoom in"></div>
-      <div id="btn_zoom_out"title="Zoom out"></div>
-    </div>
-    <div id="input-box-set-container">
-      <div class="input-container" id="input-container__search">
-          <input class="input-bar" tabindex="1" id="search" placeholder="Search and select nodes"/>
-          <button tabindex="-1" id="btn_search"></button>
-          <div id="selection-count"></div>
-        <div id="search-suggestion" class="suggestion" style="display: none"></div>
-      </div>
-      <div class="input-container" id="input-container__graph-input">
-          <div contentEditable="true" tabindex="2" class="input input-bar" id="textanalyser" placeholder="Add nodes or links" autofocus ></div>
-          <button tabindex="-1" id="btn_add"></button>
-        <div id="input-suggestion" class="suggestion" style="display: none"></div>
-	<!--        <div id="input-suggestion2" class="suggestion" style="display: none"></div> -->
-        <div id="activity_view">
-          <div id="activity_view__header">Activity</div>
-          <div id="activity_view__body" style="display:none"></div>
-        </div>
-      </div>
-    </div>
+      <div id="btn_zoom_out"title="Zoom out"></div> 
+    </div> --> 
+    <!--    </div> -->
+    <!--
     <div class="info-container" style="display:none">
        <div id="editbox">
          <p class="info-card-message"></p>
@@ -104,14 +112,14 @@ var RZ_VERSION = '{% include "version.txt" %}';
              <span class="info-card-attr" id="displaystatus"></span>
          </div>
        </div>
-    </div>
-    <div id="graph-view__canvas"></div>
+    </div> -->
+               <div id="graph-view__canvas"></div> 
     <div class="type_selection" style="display:none; width:400px; top: 20px">
       <div class="type_selection__row" id="type_selection__intro">Change node type with <span class="kbd-button">Shift</span>+<span class="kbd-button">Up</span> and <span class="kbd-button">Shift</span>+<span class="kbd-button">Down</span></div>
       <div class="type_selection__row" id="type_selection__chosen_type_label">Chosen Type: <span id="type_selection__chosen_type_name"/></div>
       <div class="type_selection__row" id="type_selection__chosen_type_desc"></div>
-    </div>
-    <div class="debug-ui">
+      </div> 
+   <!-- <div class="debug-ui">
     <div class="debug-ui-row">
         <div class="debug-ui-left">
             <a class="save-history" href="#">Save history</a>
@@ -144,12 +152,12 @@ var RZ_VERSION = '{% include "version.txt" %}';
     </div>
     <div class="debug-ui-row">
         <button id="btn_export" title="Export">Export</button>
-    </div>
+        </div> -->
 
 
 
-    </div>
-  </div>
+          <input class="input-bar" tabindex="1" id="search" placeholder="Comment here"/>
+    </div> 
   <div class="rhizi-logo"><a tabindex="-1" href="http://www.rhizi.org">
     <img src="/static/img/rhizi-logo.png"/></a>
   </div>

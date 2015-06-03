@@ -8,11 +8,8 @@ var incomingActivityBus = new Bacon.Bus(),
     graph_view_element,
     graph_view,
     graph,
-    activities = [],
+    activities = [];
     notificounter = 0;
-
-
-
 
 function is_topo(diff)
 {
@@ -182,12 +179,9 @@ Activity.prototype.update_time_ago_element = function (zero_time) {
 function appendActivity(diff)
 {
     var activity = new Activity(diff);
-    var notification = new Activity(diff);
+
     activities.push(activity);
     activity_element.prepend(activity.div);
-    user_notifications_element.prepend(notification.div);
-    notificounter += 1
-    document.getElementById("user_notifications__header").textContent = notificounter;
     // TODO - only update visible (visible_in / out hooks?)
     // TODO - x button
     // TODO - user name (requires protocol update?)
@@ -212,20 +206,14 @@ function clear()
 function init(_graph, _graph_view, _graph_view_element)
 {
     incomingActivityBus.onValue(appendActivity);
-    activity_element = $('#activity_view__body');
-    user_notifications_element= $('#user_notifications__body');
+    activity_element = $('#user_notifications__body');
     graph_view = _graph_view;
     graph = _graph;
     setInterval(update_ago, MINUTE_IN_MSEC);
-    $('#activity_view__header').on('click', function() {
-        activity_element.toggle();
-    });
-    userfeed_element = $('#user_notifications__body');
-    setInterval(update_ago, MINUTE_IN_MSEC);
     $('#user_notifications__header').on('click', function() {
-        userfeed_element.toggle(); 
-        notificounter = 0;
-        document.getElementById("user_notifications__header").textContent = notificounter;
+        activity_element.toggle();
+        document.getElementById("#user_notifications__header").textContent = notificounter;
+        notificounter += 1;
     });
     clear();
 }

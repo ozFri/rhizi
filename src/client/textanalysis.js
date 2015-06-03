@@ -15,6 +15,7 @@ var typeindex = 0,
     node_name_to_type = {},
     nodetype_to_index = _.object(nodetypes, _.range(nodetypes.length));
 
+var linknumber = 0 ;
 
 var _get_lastnode,
     get_lastnode = function (editgraph, cursor) {
@@ -419,7 +420,7 @@ var textAnalyser = function (spec) {
             }
             return;
         }
-        name = 'wikidiun';
+        name = ' ';
         if (link_hash[src_name] && link_hash[src_name][dst_name]) {
             if (yell_bug) {
                 console.log('bug - adding link twice (' + src_name + ', ' + dst_name + ')');
@@ -434,7 +435,7 @@ var textAnalyser = function (spec) {
         var link = {
             src_name: src_name,
             dst_name: dst_name,
-            name: "wikidiun",
+            name: " ",
         };
         links.push(link);
     }
@@ -492,8 +493,8 @@ var textAnalyser = function (spec) {
         __addNode(node_name);
         if (link_name !== undefined) {
         //add s node?
-		var randomdate= new Date();
-		link_name= link_name + randomdate.getTime().toString(); 
+		linknumber +=1 ;
+		link_name= link_name + linknumber.toString(); 
 		__addNode(link_name)
 	    	__addLink(node_name,
                       link_name,

@@ -151,11 +151,16 @@ var completer = (function (input_element, dropdown, base_config) {
     function patternCompletions(text)
     {
         var ret = [
-		"name  AGREE_WITH  statement ",
-		"name  DISAGREE_WITH  statement ",
-	    	"name  UNDECIDED_ON  statement ",
-		"statement  INFERS  statement ",
-	    	"statement  CONTRADICTS  statement ",
+		"INFERS",
+		"CONTRADICTS",
+		"AGREE_WITH",
+		"DISAGREE_WITH",
+		"UNDECIDED_ON",
+//		"name  AGREE_WITH  statement ",
+//		"name  DISAGREE_WITH  statement ",
+//	    	"name  UNDECIDED_ON  statement ",
+//		"statement  INFERS  statement ",
+//	    	"statement  CONTRADICTS  statement ",
 		];
 
 //        for (var name in patternOptions) {

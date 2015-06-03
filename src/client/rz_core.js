@@ -55,6 +55,10 @@ function svg_click_handler(e) {
     update_view__graph(false);
 }
 
+function svg_doubleclick_handler(e) {
+    alert("ta da!"); 
+}
+
 function recenterZoom() {
     vis.attr("transform", "translate(0,0)scale(1)");
 }
@@ -141,6 +145,7 @@ var init_graph_views = function () {
     d3.select("svg").on("dblclick.zoom", null); // disable zoom on double click
 
     $('svg').click(svg_click_handler);
+    $('svg').dblclick(svg_doubleclick_handler);
     var bubble_property =
         edit_graph.diffBus.map(function () {
             return edit_graph.nodes().length == 0 ? 0 : 180;
