@@ -9,6 +9,10 @@ META_LABEL__RZDOC_TYPE = '__RZDOC'  # RZdoc node
 META_LABEL__RZDOC_NS_PREFIX = '__RZDOC_NS_'
 META_LABEL__RZDOC_NS_META_PREFIX = '__RZDOC_NS_META_'
 
+META_LABEL__AIFNODE_TYPE = '__AIFNODE'  # AIF node
+META_LABEL__AIFNODE_NS_PREFIX = '__AIFNODE_NS_'
+META_LABEL__AIFNODE_NS_META_PREFIX = '__AIFNODE_NS_META_'
+
 META_LABEL__VC_HEAD = '__HEAD'
 META_LABEL__VC_COMMIT = '__COMMIT'  # diff commit node
 META_LABEL__VC_PARENT = '__PARENT'  # diff commit node
@@ -31,5 +35,9 @@ meta_label_set = [META_LABEL__VC_HEAD,
                   META_LABEL__RZDOC_TYPE,
                   META_LABEL__RZDOC_NS_PREFIX,
                   META_LABEL__RZDOC_NS_META_PREFIX,
+
+                  META_LABEL__AIFNODE_TYPE,
+                  META_LABEL__AIFNODE_NS_PREFIX,
+                  META_LABEL__AIFNODE_NS_META_PREFIX,
                   ]
 

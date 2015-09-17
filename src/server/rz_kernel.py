@@ -9,25 +9,43 @@ import time
 import traceback
 
 from db_controller import DB_Controller
-from db_op import (DBO_diff_commit__attr, DBO_block_chain__commit, DBO_rzdoc__create,
-    DBO_rzdoc__lookup_by_name, DBO_rzdoc__clone, DBO_rzdoc__delete, DBO_rzdoc__list,
+from db_op import (DBO_diff_commit__attr, DBO_block_chain__commit, DBO_rzdoc__create, DBO_aifnode__create,
+    DBO_aifnode__clone,DBO_match_node_id_set,
+    DBO_aifnode__lookup_by_name, DBO_rzdoc__lookup_by_name, DBO_rzdoc__clone, DBO_rzdoc__delete, DBO_rzdoc__list,
     DBO_block_chain__init, DBO_rzdoc__rename, DBO_nop,
     DBO_match_node_set_by_id_attribute, DBO_rzdb__fetch_DB_metablock,
     DBO_rzdb__init_DB)
 from db_op import DBO_diff_commit__topo, DBO_rzdoc__commit_log
 from model.graph import Topo_Diff
-from model.model import RZDoc
-from neo4j_qt import QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
+from model.model import RZDoc, AIFNode
+from neo4j_qt import QT_AIFNODE_NS_Filter, QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
 import neo4j_util
 
 
 log = logging.getLogger('rhizi')
+
+class AIFNode_Exception__not_found(Exception):
+
+    def __init__(self, aifnode_name):
+        super(AIFNode_Exception__not_found, self).__init__('aifnode not found: \'%s\'' % (aifnode_name))
+        self.aifnode_name = aifnode_name
+
+class AIFNode_Exception__not_found(Exception):
+
+    def __init__(self, aifnode_name):
+        super(AIFNode_Exception__not_found, self).__init__('aifnode not found: \'%s\'' % (aifnode_name))
+        self.aifnode_name = aifnode_name
 
 class RZDoc_Exception__not_found(Exception):
 
     def __init__(self, rzdoc_name):
         super(RZDoc_Exception__not_found, self).__init__('rzdoc not found: \'%s\'' % (rzdoc_name))
         self.rzdoc_name = rzdoc_name
+
+class AIFNode_Exception__already_exists(Exception):
+
+    def __init__(self, aifnode_name):
+        super(AIFNode_Exception__already_exists, self).__init__('aifnode already exists: \'%s\'' % (aifnode_name))
 
 class RZDoc_Exception__already_exists(Exception):
 
@@ -92,6 +110,7 @@ class RZ_Kernel(object):
 
     def __init__(self):
         self.cache__rzdoc_name_to_rzdoc = {}
+        self.cache__aifnode_name_to_aifnode = {}
         self.heartbeat_period_sec = 0.5
         self.period__db_conn_check = 60
         self.rzdoc_reader_assoc_map = defaultdict(list)
@@ -169,6 +188,27 @@ class RZ_Kernel(object):
         self.should_stop = True
         self.executor.shutdown()
         log.info('rz_kernel: shutting down')
+
+    def cache_lookup__aifnode(self, aifnode_name):
+        """
+        lookup AIFNode by aifnode_name, possibly triggering a DB query
+
+        @return: AIFNode
+        @raise RZDoc_Exception__not_found
+        """
+        # FIXME: impl cache cleansing logic
+
+        cache_doc = self.cache__aifnode_name_to_aifnode.get(aifnode_name)
+        if None != cache_doc:
+            return cache_doc
+
+        aif_node = self.aifnode__lookup_by_name(aifnode_name)
+
+        if None == aif_node:
+            raise AIFNode_Exception__not_found(aifnode_name)
+
+        self.cache__aifnode_name_to_aifnode[aifnode_name] = aif_node
+        return aif_node
 
     def cache_lookup__rzdoc(self, rzdoc_name):
         """
@@ -293,6 +333,20 @@ class RZ_Kernel(object):
         ret_list = list(rzdoc_r_set)
         return ret_list
 
+    def aifnode__clone(self, aifnode, rzdoc, ctx=None):
+        """
+        Clone node, neighbours, comments..
+
+        @return Topo_Diff with node/link attributes
+        """
+#        filter_attribute_map="{'name':[something]}"
+#        op = DBO_match_node_id_set(filter_attribute_map)
+        op = DBO_aifnode__clone(aifnode)
+        op = QT_RZDOC_NS_Filter(rzdoc)(op)
+
+        topo_diff = self.db_ctl.exec_op(op)
+        return topo_diff
+
     def rzdoc__clone(self, rzdoc, ctx=None):
         """
         Clone entire rzdoc
@@ -314,6 +368,28 @@ class RZ_Kernel(object):
 
         commit_log = self.db_ctl.exec_op(op)
         return commit_log
+
+    def aifnode__create(self, aifnode_name, ctx=None):
+        """
+        Create & persist new AIFNode - may fail on unique name/id constraint violation
+
+        @return: AIFNode object
+        @raise AIFNode_Exception__already_exists
+        """
+        try:
+            self.cache_lookup__aifnode(aifnode_name)
+            raise AIFNode_Exception__already_exists(aifnode_name)
+        except AIFNode_Exception__not_found: pass
+
+        aifnode = AIFNode(aifnode_name)
+        aifnode.id = neo4j_util.generate_random_rzdoc_id()
+
+        op__aifnode__create = DBO_aifnode__create(aifnode)
+        op__block_chain__init = DBO_block_chain__init(aifnode)
+
+        self.db_ctl.exec_op(op__aifnode__create)
+        self.db_ctl.exec_op(op__block_chain__init)
+        return aifnode
 
     def rzdoc__create(self, rzdoc_name, ctx=None):
         """
@@ -355,6 +431,18 @@ class RZ_Kernel(object):
         # FIXME:
         #    - broadcast delete event
 
+    def aifnode__lookup_by_name(self, aifnode_name, ctx=None):
+        """
+        @param ctx: may be None
+
+        @return: AIFNode object or None if aifnode was not found
+        """
+
+        op = DBO_aifnode__lookup_by_name(aifnode_name)
+
+        aifnode = self.db_ctl.exec_op(op)
+        return aifnode  # may be None
+    
     def rzdoc__lookup_by_name(self, rzdoc_name, ctx=None):
         """
         @param ctx: may be None

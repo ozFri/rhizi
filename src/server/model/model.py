@@ -68,6 +68,27 @@ class Link():
         """
         return Link.Link_Ptr(src_id, dst_id)
 
+class AIFNode():
+
+    def __init__(self, aifnode_name=None):
+        self.id = None  # set upon DB commit
+        self.name = aifnode_name
+
+    def __eq__(self, other):
+        if not isinstance(other, AIFNode): return False
+
+        assert self.id != None and other.id != None
+
+        return self.id == other.id
+
+    def __hash__(self):
+        assert self.id != None
+
+        return self.id.__hash__()
+
+    def __str__(self):
+        return 'aifnode: name: %s' % (self.name)
+
 class RZDoc():
 
     def __init__(self, rzdoc_name=None):

@@ -209,6 +209,7 @@ function homies(nodes) {
     connected = $.extend(true, {}, connected, secondneighbours);
     return _select_nodes_helper(nodes, connected);
 };
+
 var node_related = function(node) {
     return related_nodes__by_id[node.id] !== undefined ||
            related_links__by_node_id[node.id] !== undefined;

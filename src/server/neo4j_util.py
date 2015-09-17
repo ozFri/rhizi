@@ -60,6 +60,12 @@ def cfmt(fmt_str, *args, **kwargs):
     """
     return Cypher_String_Formatter().format(fmt_str, *args, **kwargs)
 
+def aifnode__ns_label(aifnode):
+    """
+    [!] must be quoted when used in queries
+    """
+    return neo4j_schema.META_LABEL__AIFNODE_NS_PREFIX + aifnode.id
+
 def rzdoc__ns_label(rzdoc):
     """
     [!] must be quoted when used in queries

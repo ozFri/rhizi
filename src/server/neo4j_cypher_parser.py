@@ -286,6 +286,14 @@ class e_ident(pt_abs_node):  # identifier
     def rgx(self, g_name='ident'):
         return '(?P<%s>[\w_]+)' % (g_name)
 
+class e_path_quantifier(pt_abs_node):  # path quantifier
+
+    def __init__(self): super(e_path_quantifier, self).__init__()
+
+    @classmethod
+    def rgx(self, g_name='pathquantifier'):
+        return '(?P<%s>[\*\d\.\.\d]+)' % (g_name)
+
 class e_param(e_ident):
     """
     Cypher parameter
@@ -572,9 +580,15 @@ class Cypher_Parser(object):
             pass
 
     def read__e_ident(self, input, n_ident):
-        rgx_ident = r'^%s%s' % (e_ident.rgx(), self.rgx__suffix)
+        rgx_ident = r'^%s%s' % (e_ident.rgx(), self.rgx__suffix) 
         m = self.__match(rgx_ident, input, re.UNICODE)
         n_ident.value = m.group('ident')
+        return m.group('suffix')
+
+    def read__e_path_quantifier(self, input, n_ident):
+        rgx_path_quantifier = r'^%s%s' % (e_path_quantifier.rgx(), self.rgx__suffix) 
+        m = self.__match(rgx_path_quantifier, input, re.UNICODE)
+        n_ident.value = m.group('pathquantifier')
         return m.group('suffix')
 
     def read__e_value(self, input, n_value):
@@ -616,8 +630,9 @@ class Cypher_Parser(object):
         return self.__parse(input, n_cur)
 
     def parse__e_clause_create_or_match(self, input, n_cur):
-        if ' ' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
-
+        if ' ' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume    
+        if 'p' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
+        if '=' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
         if '(' == input[0]: return self.parse__node_or_rel(input, n_cur)  # open node or path
 
         if ',' == input[0]:  # open sibling
@@ -650,6 +665,11 @@ class Cypher_Parser(object):
 
     def parse__e_ident(self, input, n_cur):
         suffix = self.read__e_ident(input, n_cur)
+        n_cur = n_cur.parent
+        return self.__parse(suffix, n_cur)
+
+    def parse__e_path_quantifier(self, input, n_cur):
+        suffix = self.read__e_path_quantifier(input, n_cur)
         n_cur = n_cur.parent
         return self.__parse(suffix, n_cur)
 
@@ -732,7 +752,7 @@ class Cypher_Parser(object):
         if '(' == input[0]:  # open node
             n_cur = n_cur.spawn_child(p_node)
             return self.parse__node_or_rel(input[1:], n_cur)
-
+        
         if ')' == input[0]:  # close node/path
             if input.startswith(')-'):  # open path
                 n_cur = n_cur.rotate__pin_under_new_parent(p_path)
@@ -764,6 +784,12 @@ class Cypher_Parser(object):
         m = re.match(rgx_opt_id, input)
         if m:
             n_cur = n_cur.spawn_child(e_ident)
+            return self.__parse(input, n_cur)
+
+        rgx_opt_path_quantifier = r'^%s' % (e_path_quantifier.rgx('pathquantifier'))
+        s = re.match(rgx_opt_path_quantifier, input)
+        if s:
+            n_cur = n_cur.spawn_child(e_path_quantifier)
             return self.__parse(input, n_cur)
 
         assert False

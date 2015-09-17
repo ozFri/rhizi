@@ -17,10 +17,10 @@ from model.graph import Topo_Diff
 from model.model import Link
 from rz_api import rz_mainpage
 from rz_api_common import sanitize_input__attr_diff, \
-    __sanitize_input, sanitize_input__rzdoc_name
+    __sanitize_input, sanitize_input__rzdoc_name, sanitize_input__aifnode_name
 from rz_api_common import sanitize_input__topo_diff
 from rz_api_common import validate_obj__attr_diff
-from rz_kernel import RZDoc_Exception__already_exists
+from rz_kernel import RZDoc_Exception__already_exists, AIFNode_Exception__already_exists
 from rz_req_handling import common_resp_handle__success, make_response__json, \
     HTTP_STATUS__204_NO_CONTENT, HTTP_STATUS__201_CREATED, \
     common_resp_handle__client_error, \
@@ -34,13 +34,15 @@ class Req_Context():
     Request context:
        - user_name
        - rzdoc
+       - aifnode
     """
 
-    def __init__(self, user_name=None, rzdoc=None):
+    def __init__(self, user_name=None, rzdoc=None, aifnode=None):
         self.user_name = user_name
         self.rzdoc = rzdoc
+        self.aifnode = aifnode
 
-def __context__common(rzdoc_name=None):
+def __context__common(rzdoc_name=None, aifnode_name=None):
     """
     Common request context builder passed along with kernel calls:
        - set user_name
@@ -48,7 +50,8 @@ def __context__common(rzdoc_name=None):
 
     @raise RZDoc_Exception__not_found: if rzdoc_name arg was passed and document was not found
     """
-
+    rzdoc_name = rzdoc_name
+    aifnode_name = aifnode_name
     ret = Req_Context()
     if session.has_key('username'):
         ret.user_name = session['username']
@@ -56,6 +59,9 @@ def __context__common(rzdoc_name=None):
     if None != rzdoc_name:
         s_rzdoc_name = sanitize_input__rzdoc_name(rzdoc_name)
         ret.rzdoc = current_app.kernel.cache_lookup__rzdoc(s_rzdoc_name)
+    if None != aifnode_name:
+        s_aifnode_name = sanitize_input__aifnode_name(aifnode_name)
+        ret.aifnode = current_app.kernel.cache_lookup__aifnode(s_aifnode_name)
     return ret
 
 def __load_node_set_by_id_attr_common(rzdoc_name, id_set):
@@ -186,8 +192,46 @@ def diff_commit__attr():
 def diff_commit__vis():
     pass
 
+def aifnode__via_rz_url(aifnode_name=None):
+    return rz_mainpage(aifnode_name)
+
 def rzdoc__via_rz_url(rzdoc_name=None):
     return rz_mainpage(rzdoc_name)
+
+@common_rest_req_exception_handler
+def aifnode_clone():
+
+    def sanitize_input(req):      
+        rzdoc_name = req.get_json().get('rzdoc_name')
+        aifnode_name = req.get_json().get('aifnode_name')
+        return (rzdoc_name, aifnode_name)
+
+    rzdoc_name, aifnode_name = sanitize_input(request)
+    sanitize_input(request)
+    if None == aifnode_name:  # load welcome doc by default
+        aifnode_name = current_app.rz_config.rzdoc__mainpage_name
+
+    kernel = flask.current_app.kernel
+    ctx = __context__common(rzdoc_name , aifnode_name)
+    topo_diff = kernel.aifnode__clone(ctx.aifnode , ctx.rzdoc , ctx)
+    topo_diff_json = topo_diff.to_json_dict()  # serialize Topo_Diff before including in response
+    commit_log = kernel.rzdoc__commit_log(ctx.rzdoc, limit=10)
+    return common_resp_handle__success(data=[topo_diff_json, commit_log])
+
+@common_rest_req_exception_handler
+def aifnode__create(aifnode_name):
+    """
+    create aif node
+    """
+    s_aifnode_name = sanitize_input__rzdoc_name(aifnode_name)
+    kernel = flask.current_app.kernel
+    ctx = __context__common(aifnode_name=None)  # avoid rzdoc cache lookup exception
+    try:
+        kernel.aifnode__create(s_aifnode_name, ctx)
+    except AIFNode_Exception__already_exists as e:
+        return common_resp_handle__server_error(error='aifnode already exists')
+    return make_response__json(status=HTTP_STATUS__201_CREATED)
+
 
 @common_rest_req_exception_handler
 def rzdoc_clone():

@@ -196,6 +196,13 @@ def init_rest_interface(cfg, flask_webapp):
                       rest_entry('/match/node-set', rz_api_rest.match_node_set_by_attr_filter_map),
                       rest_entry('/pw-reset', rz_user.rest__pw_reset, {'methods': ['GET', 'POST']}),
 
+                      #aif endpoints
+                      rest_entry('/aif/<path:aifnode_name>', rz_api_rest.aifnode__via_rz_url, {'methods': ['GET']}),  # pretty URLs
+
+                      rest_entry('/api/aifnode/clone',rz_api_rest.aifnode_clone),
+                      rest_entry('/api/aifnode/<path:aifnode_name>/create', rz_api_rest.aifnode__create),
+
+
                       # doc endpoints
                       rest_entry('/rz/<path:rzdoc_name>', rz_api_rest.rzdoc__via_rz_url, {'methods': ['GET']}),  # pretty URLs
                       rest_entry('/api/rzdoc/clone', rz_api_rest.rzdoc_clone),

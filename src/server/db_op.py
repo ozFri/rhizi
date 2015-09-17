@@ -6,7 +6,7 @@ import re
 
 from model.graph import Attr_Diff
 from model.graph import Topo_Diff
-from model.model import Link, RZDoc, RZCommit
+from model.model import Link, RZDoc, RZCommit, AIFNode
 from neo4j_cypher import DB_Query, DB_result_set, DB_Raw_Query
 import neo4j_schema
 from neo4j_util import cfmt
@@ -833,6 +833,75 @@ class DBO_rzdoc__commit_log(DB_op):
                     ret.append(diff)
         return ret
 
+class DBO_aifnode__clone(DB_op):
+
+    def __init__(self, aifnode, limit=16384):
+        """
+        clone rhizi
+
+        @return: a Topo_Diff with the appropriate node_set_add, link_set_add
+        fields filled
+        """
+        super(DBO_aifnode__clone, self).__init__()
+
+        self.limit = limit
+        self.skip = 0
+
+        q_arr = ['match (n)',
+                 'with n',
+                 'order by n.id',
+                 'skip %d' % (self.skip),
+                 'limit %d' % (self.limit),
+                 'where n.name="%s"' % aifnode.name,
+                 'optional match (n)-[r*0..2]-(m)',
+                 'return m,labels(m),collect([r, extract(rel in r | type(rel)), m.id])']
+
+
+        db_q = DB_Query(q_arr)
+        self.add_db_query(db_q)
+
+    def process_result_set(self):
+        ret_n_set = []
+        ret_l_set = []
+        for _, _, r_set in self.iter__r_set():
+            for row in r_set:
+                n, n_lbl_set, l_set = row.items()  # see query return statement
+
+                # reconstruct nodes
+                assert None != n.get('id'), "db contains nodes with no id"
+
+                n['__label_set'] = self.process_q_ret__n_label_set(n_lbl_set)
+
+                ret_n_set.append(n)
+
+                # reconstruct links from link tuples
+                for l_tuple in l_set:
+                    assert 3 == len(l_tuple)  # see query return statement
+
+                    if None == l_tuple[0]:  # check if link dst is None
+                        # as link matching is optional, collect may yield empty sets
+                        continue
+
+                    ret_l, ret_l_type, ret_l_dst_id = l_tuple
+                    l = Link.Link_Ptr(src_id=n['id'], dst_id=ret_l_dst_id)
+                    l['id'] = ret_l['id']
+                    l['__type'] = self.process_q_ret__l_type(ret_l_type)
+
+                    ret_l_set.append(l)
+
+        if len(ret_n_set) >= self.limit:  # TODO: generalize logic, mv to DB_Driver
+            log.warning('DB op result set larger than query limit: size: %d, limit: %d' % (len(ret_n_set), self.limit))
+
+        topo_diff = Topo_Diff(node_set_add=ret_n_set,
+                              link_set_add=ret_l_set)
+        return topo_diff
+
+    def process_q_ret__n_label_set(self, label_set):
+        return label_set
+
+    def process_q_ret__l_type(self, l_type):
+        return [l_type]  # return as list
+
 class DBO_rzdoc__clone(DB_op):
 
     def __init__(self, limit=16384):
@@ -900,6 +969,27 @@ class DBO_rzdoc__clone(DB_op):
     def process_q_ret__l_type(self, l_type):
         return [l_type]  # return as list
 
+class DBO_aifnode__create(DB_op):
+
+    def __init__(self, aifnode):
+        """
+        create a new aif node
+        """
+        super(DBO_aifnode__create, self).__init__()
+
+        #
+        # setup aifnode node
+        #
+        q_arr = ['create (n:%s {aifnode_attr})' % (neo4j_schema.META_LABEL__AIFNODE_TYPE),
+                 'return n.id, n.name']
+
+        param_set = {'aifnode_attr': {'id': aifnode.id,
+                                    'name': aifnode.name}}
+
+        db_q = DB_Query(q_arr, param_set)
+        self.add_db_query(db_q)
+
+
 class DBO_rzdoc__create(DB_op):
 
     def __init__(self, rzdoc):
@@ -957,6 +1047,31 @@ class DBO_rzdoc__list(DB_op):
                  'return n']
         db_q = DB_Query(q_arr)
         self.add_db_query(db_q)
+
+class DBO_aifnode__lookup_by_name(DB_op):
+
+    def __init__(self, aifnode_name):
+        """
+        @return: [aifnode] or [] if no doc with the given name was found
+        """
+        super(DBO_aifnode__lookup_by_name, self).__init__()
+
+        q_arr = ['match (n)',#:%s)' % (neo4j_schema.META_LABEL__AIFNODE_TYPE),
+                 'where n.name =~ {name}',
+                 'return n']
+
+        param_set = {'name': '(?i)' + aifnode_name}
+        db_q = DB_Query(q_arr, param_set)
+        self.add_db_query(db_q)
+
+    def process_result_set(self):
+        aifnode_dict_set = DB_op.process_result_set(self)
+        if not aifnode_dict_set: return None
+
+        aifnode_dict = aifnode_dict_set.pop()
+        aifnode = AIFNode(aifnode_name=aifnode_dict['name'])
+        aifnode.id = aifnode_dict['id']
+        return aifnode
 
 class DBO_rzdoc__lookup_by_name(DB_op):
 

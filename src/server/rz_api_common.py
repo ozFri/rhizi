@@ -66,6 +66,22 @@ def sanitize_input__rzdoc_name(rzdoc_name_raw):
 
     return rzdoc_name
 
+def sanitize_input__aifnode_name(aifnode_name_raw):
+    """
+    sanitize rzdoc name raw input
+    """
+    aifnode_name = aifnode_name_raw.strip()  # make sure we ommit trailing white spaces from doc name
+
+    if None == aifnode_name or 0 == len(aifnode_name):
+        raise API_Exception__bad_request('aifnode: open request: empty doc name')
+
+#    if None != aifnode_name and len(aifnode_name) > current_app.rz_config.aifnode__name__max_length:
+#        raise API_Exception__bad_request('aifnode: open request: doc name exceeds max doc name limit: %s' % (aifnode_name))
+
+    # FIXME: fail on HTML escape codes, UTF handling, etc
+
+    return aifnode_name
+
 def validate_obj__attr_diff(attr_diff):
     # check for name attr changes, which are currently forbidden
     for n_id, node_attr_diff_set in attr_diff['__type_node'].items():
