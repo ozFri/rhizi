@@ -35,7 +35,8 @@ from .model.graph import Topo_Diff
 from .model.model import Link
 from .rz_api import rz_mainpage
 from .rz_api_common import (sanitize_input__attr_diff,
-    __sanitize_input, sanitize_input__rzdoc_name, sanitize_input__aifnode_name)
+     __sanitize_input, sanitize_input__rzdoc_name, sanitize_input__aifnode_name)
+
 
 from .rz_api_common import sanitize_input__topo_diff
 from .rz_api_common import validate_obj__attr_diff
@@ -44,7 +45,6 @@ from .rz_req_handling import (common_resp_handle__success, make_response__json,
     HTTP_STATUS__204_NO_CONTENT, HTTP_STATUS__201_CREATED,
     common_resp_handle__client_error,
     common_rest_req_exception_handler, common_resp_handle__server_error)
-
 
 log = logging.getLogger('rhizi')
 
@@ -64,6 +64,10 @@ class Req_Context(object):
 
 def __context__common(rzdoc_name=None, aifnode_name=None):
 
+<<<<<<< HEAD
+=======
+def __context__common(rzdoc_name=None, aifnode_name=None):
+>>>>>>> minor changes
     """
     Common request context builder passed along with kernel calls:
        - set user_name
@@ -224,6 +228,9 @@ def match_node_set_by_attr_filter_map(attr_filter_map):
 def aifnode__via_rz_url(aifnode_name=None):
     return rz_mainpage(aifnode_name)
 
+
+def aifnode__via_rz_url(aifnode_name=None):
+    return rz_mainpage(aifnode_name)
 
 def rzdoc__via_rz_url(rzdoc_name=None):
     return rz_mainpage(rzdoc_name)

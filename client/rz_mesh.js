@@ -108,6 +108,13 @@ function( util,   model_diff,   model_util,   io,              activity) {
         rz_mesh_graph_ref.commit_diff__attr(attr_diff);
     }
 
+    function emit__aifnode_subscribe(aifnode_name) {
+        var callback = function(data) {
+            console.log('ws: aifnode subscription acked: aifnode name: \'' + aifnode_name + '\'');
+        };
+        socket.emit('aifnode_subscribe', { aifnode_name: aifnode_name}, callback);
+    }
+
     function emit__rzdoc_subscribe(rzdoc_name) {
         var callback = function(data) {
             console.log('ws: rzdoc subscription acked: rzdoc name: \'' + rzdoc_name + '\'');

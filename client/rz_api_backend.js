@@ -37,7 +37,7 @@ define(['util', 'model/core'], function(util, model_core) {
         var rz_server_url = document.location.origin;
 
         var common_req_ctx = function() {
-            var common_ctx = { rzdoc_name: get_rz_core().rzdoc__current__get_name() };
+            var common_ctx = { rzdoc_name: get_rz_core().rzdoc__current__get_name() aifnode_name: get_rz_core().aifnode__current__get_name() };
             return common_ctx;
         };
 
@@ -240,6 +240,21 @@ define(['util', 'model/core'], function(util, model_core) {
             var attr_diff = null;
             return this.attr_diff_commit(null);
         };
+        /**
+         * clone aifnode repo
+         */
+        this.aifnode_clone = function(on_success, on_error) {
+
+            var req_data = common_req_ctx();
+
+            // prep request
+            var req_opts = {
+                type : 'POST',
+                data : JSON.stringify(req_data)
+            };
+
+            ajax_rs('/api/aifnode/clone', req_opts, on_success, on_error);
+        };
 
         /**
          * clone rhizi repo
@@ -256,6 +271,15 @@ define(['util', 'model/core'], function(util, model_core) {
 
             ajax_rs('/api/rzdoc/clone', req_opts, on_success, on_error);
         };
+
+        /**
+         * create aifnode
+         */
+        this.aifnode_create = function(aifnode_name, on_success, on_error) {
+
+            var req_opts = { type : 'POST' };
+            return ajax_rs('/api/aifnode/' + aifnode_name + '/create', req_opts, on_success, on_error);
+        }
 
         /**
          * create rzdoc

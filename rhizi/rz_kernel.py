@@ -37,7 +37,6 @@ from .model.model import RZDoc
 from .neo4j_qt import QT_AIFNODE_NS_Filter, QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
 from .neo4j_util import generate_random_rzdoc_id
 
-
 log = logging.getLogger('rhizi')
 
 class AIFNode_Exception__not_found(Exception):
@@ -382,6 +381,21 @@ class RZ_Kernel(object):
         return topo_diff
 
     @deco__DB_status_check
+    def aifnode__clone(self, aifnode, rzdoc, ctx=None):
+        """
+        Clone node, neighbours, comments..
+
+        @return Topo_Diff with node/link attributes
+        """
+#        filter_attribute_map="{'name':[something]}"
+#        op = DBO_match_node_id_set(filter_attribute_map)
+        op = DBO_aifnode__clone(aifnode)
+        op = QT_RZDOC_NS_Filter(rzdoc)(op)
+
+        topo_diff = self.db_ctl.exec_op(op)
+        return topo_diff
+
+    @deco__DB_status_check
     def rzdoc__clone(self, rzdoc, ctx=None):
         """
         Clone entire rzdoc
@@ -423,6 +437,29 @@ class RZ_Kernel(object):
         commit_log = self.db_ctl.exec_op(op)
         return commit_log
 
+    def aifnode__create(self, aifnode_name, ctx=None):
+        """
+        Create & persist new AIFNode - may fail on unique name/id constraint violation
+
+        @return: AIFNode object
+        @raise AIFNode_Exception__already_exists
+        """
+        try:
+            self.cache_lookup__aifnode(aifnode_name)
+            raise AIFNode_Exception__already_exists(aifnode_name)
+        except AIFNode_Exception__not_found: pass
+
+        aifnode = AIFNode(aifnode_name)
+        aifnode.id = neo4j_util.generate_random_rzdoc_id()
+
+        op__aifnode__create = DBO_aifnode__create(aifnode)
+        op__block_chain__init = DBO_block_chain__init(aifnode)
+
+        self.db_ctl.exec_op(op__aifnode__create)
+        self.db_ctl.exec_op(op__block_chain__init)
+        return aifnode
+
+    @deco__DB_status_check
     def aifnode__create(self, aifnode_name, ctx=None):
         """
         Create & persist new AIFNode - may fail on unique name/id constraint violation
@@ -488,6 +525,19 @@ class RZ_Kernel(object):
         # FIXME:
         #    - broadcast delete event
 
+    def aifnode__lookup_by_name(self, aifnode_name, ctx=None):
+        """
+        @param ctx: may be None
+
+        @return: AIFNode object or None if aifnode was not found
+        """
+
+        op = DBO_aifnode__lookup_by_name(aifnode_name)
+
+        aifnode = self.db_ctl.exec_op(op)
+        return aifnode  # may be None
+    
+    @deco__DB_status_check
     def aifnode__lookup_by_name(self, aifnode_name, ctx=None):
         """
         @param ctx: may be None

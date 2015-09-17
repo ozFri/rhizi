@@ -78,8 +78,9 @@ function svg_click_handler(e) {
     update_view__graph(false);
 }
 
-function svg_doubleclick_handler(e) {
-    alert("ta da!"); 
+function node_doubleclick_handler(e) {
+    var whatever= prompt("enter node");
+    aifnode__create_and_open(whatever);
 }
 
 function recenterZoom() {
@@ -168,7 +169,7 @@ var init_graph_views = function () {
     d3.select("svg").on("dblclick.zoom", null); // disable zoom on double click
 
     $('svg').click(svg_click_handler);
-    $('svg').dblclick(svg_doubleclick_handler);
+    $('svg').dblclick(node_doubleclick_handler);
     var bubble_property =
         edit_graph.diffBus.map(function () {
             return edit_graph.nodes().length == 0 ? 0 : 180;
@@ -301,10 +302,35 @@ function page_title(rzdoc_name)
     return rzdoc_name + ' -- Rhizi Prototype';
 }
 
+function url_for_aif(aifnode_name)
+{
+    // [!] needs to be synced with server
+    return '/aif/' + aifnode_name;
+}
+
 function url_for_doc(rzdoc_name)
 {
     // [!] needs to be synced with server
     return '/rz/' + rzdoc_name;
+}
+
+function aifnode__create_and_open(aifnode_name) {
+
+    var on_success = function (clone_obj) {
+        aifnode__open(aifnode_name);
+    };
+
+    var on_error = function(xhr, status, err_thrown) {
+        // TODO: handle malformed doc name
+//        var toolbar__status_body;
+
+//        toolbar__status_body = $('<div>Cannot create document titled \'' + aifnode_name + '\', document already exists.</div>');
+//        toolbar__status.display_h;tml_frag(toolbar__status_body);
+        aifnode__open(aifnode_name);
+    };
+
+    // TODO: validate rzdoc name
+    rz_api_backend.aifnode_create(aifnode_name, on_success, on_error);
 }
 
 function rzdoc__create_and_open(rzdoc_name) {
@@ -335,6 +361,54 @@ function rzdoc__current__get_name() {
  *    - load rzdoc frombackend
  *    - do nothing if name of current rzdoc equals requested rzdoc
  */
+function aifnode__open(aifnode_name) {
+
+    function on_success() {
+        get_search().clear();
+        main_graph_view.zen_mode__cancel();
+        window.history.replaceState(null, page_title(aifnode_name), url_for_aif(aifnode_name) + location.search);
+
+        var rzdoc_bar = $('#rzdoc-bar_doc-label');
+        var rzdoc_bar__doc_lable = $('#rzdoc-bar_doc-label');
+        rzdoc_bar.fadeToggle(500, 'swing', function() {
+            rzdoc_bar__doc_lable.text(aifnode_name);
+            rzdoc_bar.fadeToggle(500);
+        });
+
+        rz_mesh.emit__aifnode_subscribe(aifnode_name);
+        console.log('rzdoc: opened rzdoc : \'' + aifnode_name + '\'');
+    };
+
+    function on_error(xhr, status, err_thrown) {
+        var create_btn,
+            aifnode_name,
+            toolbar__status_body;
+
+        aifnode_name = xhr.responseJSON.data.aifnode_name;
+
+        create_btn = $('<span>');
+        create_btn.text('Create document');
+        create_btn.addClass('status-bar__btn_rzdoc_create_post_404');
+
+        toolbar__status_body = $('<div>');
+        toolbar__status_body.text('Rhizi could not find a node titled \'' + aifnode_name + '\'.');
+        toolbar__status_body.append(create_btn);
+
+        create_btn.click(function() {
+            aifnode__create_and_open(aifnode_name);
+            toolbar__status.hide();
+        });
+
+        toolbar__status.display_html_frag(toolbar__status_body);
+    }
+
+    rz_config.aifnode_cur__name = aifnode_name;
+    main_graph.clear();
+    edit_graph.clear();
+    activity.clear();
+    main_graph.load_aif_from_backend(on_success, on_error);
+}
+
 function rzdoc__open(rzdoc_name) {
 
     function on_success() {
@@ -478,8 +552,10 @@ var published_var_dict = {
     // functions
     init: init,
     load_from_json: load_from_json,
+    aifnode__create_and_open: aifnode__create_and_open,
     rzdoc__create_and_open: rzdoc__create_and_open,
     rzdoc__open: rzdoc__open,
+    aifnode__open: aifnode__open,
     rzdoc__current__get_name: rzdoc__current__get_name,
     rzdoc__open_default: rzdoc__open_default,
     rzdoc__search: rzdoc__search,
