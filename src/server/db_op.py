@@ -33,6 +33,7 @@ import neo4j_util as db_util
 
 log = logging.getLogger('rhizi')
 
+
 class DBO_factory__default(object):
     """
     Default configuration DB op factory, providing the following function:
