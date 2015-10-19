@@ -312,7 +312,7 @@ class RZ_Kernel(object):
            - RESP API calls
            - socket.io calls
            - future interfaces
-           
+
         @return: a tuple containing the input diff and the result of it's commit
         """
         rzdoc = ctx.rzdoc
@@ -333,7 +333,7 @@ class RZ_Kernel(object):
            - RESP API calls
            - socket.io calls
            - future interfaces
-           
+
         @return: a tuple containing the input diff and the result of it's commit
         """
         rzdoc = ctx.rzdoc
