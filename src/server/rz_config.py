@@ -1,9 +1,27 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 # -*- coding: utf-8 -*-
 
 import logging
 import os
 import re
 import types
+import neo4j_schema
 
 
 log = logging.getLogger('rhizi')
@@ -100,8 +118,8 @@ class RZ_Config(object):
         cfg['log_path'] = 'rhizi-server.log'
 
         # Rhizi
-        cfg['rzdoc__mainpage_name'] = 'Welcome Rhizi'
-        cfg['rzdoc__name__max_length'] = 256
+        cfg['rzdoc__mainpage_name'] = neo4j_schema.RZDOC__DEFAULT_MAINPAGE_NAME
+        cfg['rzdoc__name__max_length'] = neo4j_schema.RZDOC__NAME__MAX_LENGTH
 
         ret = RZ_Config()
         ret.__dict__ = cfg  # allows setting of @property attributes

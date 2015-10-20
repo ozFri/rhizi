@@ -1,3 +1,20 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """
 Rhizi REST web API:
    - make use of rz_kernel for core logic execution
@@ -92,6 +109,54 @@ def diff_commit__set():
 
     assert False
 
+@common_rest_req_exception_handler
+def diff_commit__topo():
+    """
+    REST API wrapper around diff_commit__topo():
+       - extract topo_diff from request
+       - handle success/error outcomes
+    """
+    def sanitize_input(req):
+        rzdoc_name = request.get_json().get('rzdoc_name')
+        topo_diff_dict = request.get_json()['topo_diff']
+        topo_diff = Topo_Diff.from_json_dict(topo_diff_dict)
+
+        sanitize_input__topo_diff(topo_diff)
+        return rzdoc_name, topo_diff
+
+    rzdoc_name, topo_diff = sanitize_input(request)
+    if topo_diff.is_empty():
+        return common_resp_handle__client_error()
+
+    ctx = __context__common(rzdoc_name)
+    kernel = flask.current_app.kernel
+    _, commit_ret = kernel.diff_commit__topo(topo_diff, ctx)
+    return common_resp_handle__success(data=commit_ret)
+
+@common_rest_req_exception_handler
+def diff_commit__attr():
+    """
+    commit a graph attribute diff
+    """
+    def sanitize_input(req):
+        rzdoc_name = request.get_json().get('rzdoc_name')
+        attr_diff_dict = request.get_json()['attr_diff']
+        attr_diff = Attr_Diff.from_json_dict(attr_diff_dict)
+
+        sanitize_input__attr_diff(attr_diff)
+
+        return rzdoc_name, attr_diff;
+
+    rzdoc_name, attr_diff = sanitize_input(request)
+    validate_obj__attr_diff(attr_diff)
+    ctx = __context__common(rzdoc_name)
+    kernel = flask.current_app.kernel
+    _, commit_ret = kernel.diff_commit__attr(attr_diff, ctx)
+    return common_resp_handle__success(data=commit_ret)
+
+def diff_commit__vis():
+    pass
+
 def load_link_set_by_link_ptr_set():
 
     def deserialize_param_set(param_json):
@@ -143,54 +208,6 @@ def match_node_set_by_attr_filter_map(attr_filter_map):
     op = DBO_match_node_id_set(attr_filter_map)
 
     assert False
-
-@common_rest_req_exception_handler
-def diff_commit__topo():
-    """
-    REST API wrapper around diff_commit__topo():
-       - extract topo_diff from request
-       - handle success/error outcomes
-    """
-    def sanitize_input(req):
-        rzdoc_name = request.get_json().get('rzdoc_name')
-        topo_diff_dict = request.get_json()['topo_diff']
-        topo_diff = Topo_Diff.from_json_dict(topo_diff_dict)
-
-        sanitize_input__topo_diff(topo_diff)
-        return rzdoc_name, topo_diff
-
-    rzdoc_name, topo_diff = sanitize_input(request)
-    if topo_diff.is_empty():
-        return common_resp_handle__client_error()
-
-    ctx = __context__common(rzdoc_name)
-    kernel = flask.current_app.kernel
-    _, commit_ret = kernel.diff_commit__topo(topo_diff, ctx)
-    return common_resp_handle__success(data=commit_ret)
-
-@common_rest_req_exception_handler
-def diff_commit__attr():
-    """
-    commit a graph attribute diff
-    """
-    def sanitize_input(req):
-        rzdoc_name = request.get_json().get('rzdoc_name')
-        attr_diff_dict = request.get_json()['attr_diff']
-        attr_diff = Attr_Diff.from_json_dict(attr_diff_dict)
-
-        sanitize_input__attr_diff(attr_diff)
-
-        return rzdoc_name, attr_diff;
-
-    rzdoc_name, attr_diff = sanitize_input(request)
-    validate_obj__attr_diff(attr_diff)
-    ctx = __context__common(rzdoc_name)
-    kernel = flask.current_app.kernel
-    _, commit_ret = kernel.diff_commit__attr(attr_diff, ctx)
-    return common_resp_handle__success(data=commit_ret)
-
-def diff_commit__vis():
-    pass
 
 def aifnode__via_rz_url(aifnode_name=None):
     return rz_mainpage(aifnode_name)
@@ -273,9 +290,20 @@ def rzdoc__delete(rzdoc_name):
     return make_response__json(status=HTTP_STATUS__204_NO_CONTENT)
 
 @common_rest_req_exception_handler
-def rzdoc__list():
+def rzdoc__search():
+
+    def sanitize_input(req):
+        search_query = req.get_json().get('search_query')
+
+        if search_query is None or \
+           len(search_query) > current_app.rz_config.rzdoc__name__max_length:
+            raise Exception('malformed rzdoc search query')
+
+        return search_query
+
+    search_query = sanitize_input(request)
     kernel = flask.current_app.kernel
     ctx = __context__common(rzdoc_name=None)  # avoid rzdoc cache lookup exception
-    rzdoc_set = kernel.rzdoc__list(ctx)
+    rzdoc_set = kernel.rzdoc__search(search_query, ctx)
     ret = [rzdoc_dict['name'] for rzdoc_dict in rzdoc_set]
     return common_resp_handle__success(data=ret)

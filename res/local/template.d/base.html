@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    {% block head %}
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="shortcut icon" href="/static/img/favicon2.ico" />
+
+    <link href="/static/css/style.css" rel="stylesheet" type="text/css">
+    <link href="{{ fragment_d_path }}/css/style.css" rel="stylesheet" type="text/css">
+
+    {% endblock %}
+</head>
+<body>
+    <div id="content">{% block content %}{% endblock %}</div>
+    <div id="footer">{% block footer %}{% endblock %}</div>
+    <div id="devtools" style="display:none;">{% block devtools %}{% endblock %}</div>
+</body>
+</html>

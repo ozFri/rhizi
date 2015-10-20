@@ -1,0 +1,71 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Dor Garbash, Amir Sagie and Alon Levy
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+.menu-bar__item {
+    float: left;
+    font-size: 14px;
+}
+
+.menu-bar__delimiter {
+    float: left;
+    color: white;
+    margin-left: 0px;
+    margin-right: 0px;
+}
+
+#menu-bar {
+    height: 24px;
+    line-height: 24px;
+    padding-left: 20px;
+    padding-bottom: 3px;
+    padding-top: 3px;
+
+    &:before {
+        margin-left: 20px;
+    }
+}
+
+#menu-bar__activity-view-toggle {
+    cursor: default;
+}
+
+#menu-bar__activity-view-toggle input {
+    left: 3px;
+    position: relative;
+    top: 3px;
+}
+
+#menu-bar__rzdoc-new {
+    @include btn-change-on-hover__color(red)
+}
+
+#menu-bar__rzdoc-open {
+    @include btn-change-on-hover__color(red)
+}
+
+#menu-bar__rzdoc-search {
+    float: right;
+    margin-right: 10px;
+
+    @include btn-change-on-hover__color(red)
+}
+
+#menu-bar__rzdoc-search input {
+    font-size: 14px;
+    padding: 2px 8px;
+}

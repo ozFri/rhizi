@@ -1,3 +1,20 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """
 Rhizi kernel, home to core operation login
 """
@@ -9,13 +26,14 @@ import time
 import traceback
 
 from db_controller import DB_Controller
-from db_op import (DBO_diff_commit__attr, DBO_block_chain__commit, DBO_rzdoc__create, DBO_aifnode__create,
-    DBO_aifnode__clone,DBO_match_node_id_set,
-    DBO_aifnode__lookup_by_name, DBO_rzdoc__lookup_by_name, DBO_rzdoc__clone, DBO_rzdoc__delete, DBO_rzdoc__list,
+from db_op import (DBO_diff_commit__attr, DBO_block_chain__commit, DBO_rzdoc__create,
+    DBO_rzdoc__lookup_by_name, DBO_rzdoc__clone, DBO_rzdoc__delete, DBO_rzdoc__search,
     DBO_block_chain__init, DBO_rzdoc__rename, DBO_nop,
     DBO_match_node_set_by_id_attribute, DBO_rzdb__fetch_DB_metablock,
-    DBO_rzdb__init_DB)
-from db_op import DBO_diff_commit__topo, DBO_rzdoc__commit_log
+    DBO_rzdoc__commit_log, DBO_factory__default, DBO_match_node_id_set,
+    DBO_aifnode__clone, DBO_aifnode__lookup_by_name, DBO_aifnode__create,
+    )
+from db_op import DBO_diff_commit__topo
 from model.graph import Topo_Diff
 from model.model import RZDoc, AIFNode
 from neo4j_qt import QT_AIFNODE_NS_Filter, QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
@@ -51,6 +69,16 @@ class RZDoc_Exception__already_exists(Exception):
 
     def __init__(self, rzdoc_name):
         super(RZDoc_Exception__already_exists, self).__init__('rzdoc already exists: \'%s\'' % (rzdoc_name))
+
+class RZKernel_Exception__DB_conn_unavailable(Exception):
+
+    def __init__(self):
+        super(RZKernel_Exception__DB_conn_unavailable, self).__init__('DB connection unavailable')
+
+class RZKernel_Exception__DB_metablock_unavailable(Exception):
+
+    def __init__(self):
+        super(RZKernel_Exception__DB_metablock_unavailable, self).__init__('DB metablock unavailable')
 
 class RZDoc_Reader_Association:
     """
@@ -91,6 +119,24 @@ def deco__exception_log(kernel_f):
 
     return f_decorated
 
+def deco__DB_status_check(kernel_f):
+    """
+    Check DB status:
+       - connection available
+       - DB metablock available
+    """
+
+    @wraps(kernel_f)
+    def f_decorated(self, *args, **kwargs):
+        if False == self.db_conn_avail:
+            raise RZKernel_Exception__DB_conn_unavailable()
+        if self.db_metablock is None:
+            raise RZKernel_Exception__DB_metablock_unavailable()
+
+        return kernel_f(self, *args, **kwargs)
+
+    return f_decorated
+
 def for_all_public_functions(decorator):
 
     def cls_decorated(cls):
@@ -109,6 +155,14 @@ class RZ_Kernel(object):
     """
 
     def __init__(self):
+        """
+        caller must set:
+           - self.db_ctl
+
+        caller may set:
+           - self.db_op_factory: mush support gen_op__rzdb__init_DB()
+        """
+
         self.cache__rzdoc_name_to_rzdoc = {}
         self.cache__aifnode_name_to_aifnode = {}
         self.heartbeat_period_sec = 0.5
@@ -116,11 +170,33 @@ class RZ_Kernel(object):
         self.rzdoc_reader_assoc_map = defaultdict(list)
 
         self.db_ctl = None  # set by caller
-        self.op_factory__DBO_rzdb__init_DB = None  # required for DB initialization, set by caller
+        self.db_op_factory = DBO_factory__default()
 
         self.should_stop = False
         self.db_conn_avail = False
-        self.db_metablock_obtained = False
+        self.db_metablock = None
+
+    def _exec_chain_commit_op(self, diff_obj, ctx, meta=None):
+
+        # FIXME: clean
+        if isinstance(diff_obj, Topo_Diff):
+            commit_obj = diff_obj.to_json_dict()
+        else:
+            commit_obj = diff_obj
+
+        rzdoc = ctx.rzdoc
+        op = DBO_block_chain__commit(commit_obj, ctx, meta)
+        op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
+        op_ret = self.db_ctl.exec_op(op)
+        return op_ret.meta['ts_created']
+
+    def _init_DB(self):
+        op_init = self.db_op_factory.gen_op__rzdb__init_DB()
+        self.db_ctl.exec_op(op_init)
+        op_probe = DBO_rzdb__fetch_DB_metablock()  # reattempt mb fetch
+        db_mb = self.db_ctl.exec_op(op_probe)
+        log.info('DB initialized, schema-version: %s' % (db_mb['schema_version']))
+        return db_mb
 
     def start(self):
 
@@ -146,20 +222,17 @@ class RZ_Kernel(object):
                     finally:
                         t__last_db_conn_check = t_0
 
-                if self.db_conn_avail and not self.db_metablock_obtained:
+                if self.db_conn_avail and self.db_metablock is None:
                     try:
                         op_probe = DBO_rzdb__fetch_DB_metablock()
                         db_mb = self.db_ctl.exec_op(op_probe)
                         if db_mb is None:
                             log.warning('uninitialized DB detected, attempting initialization')
-                            op_init = self.op_factory__DBO_rzdb__init_DB.gen_op__rzdb__init_DB()
-                            self.db_ctl.exec_op(op_init)
-                            op_probe = DBO_rzdb__fetch_DB_metablock()  # reattempt mb fetch
-                            db_mb = self.db_ctl.exec_op(op_probe)
-                            log.info('DB initialized, schema-version: %s' % (db_mb['schema_version']))
+                            db_mb = self._init_DB()
                         else:
                             log.info('DB metablock read, schema-version: %s' % (db_mb['schema_version']))
-                        self.db_metablock_obtained = True
+
+                        self.db_metablock = db_mb
                     except Exception as e:
                         log.info('rz_kernel: failed DB metablock fetch / DB init')
 
@@ -231,6 +304,10 @@ class RZ_Kernel(object):
         self.cache__rzdoc_name_to_rzdoc[rzdoc_name] = rz_doc
         return rz_doc
 
+    def is_DB_status__ok(self):
+        return self.db_conn_avail and self.db_metablock is not None
+
+    @deco__DB_status_check
     def diff_commit__topo(self, topo_diff, ctx):
         """
         commit a graph topology diff - this is a common pathway for:
@@ -245,12 +322,13 @@ class RZ_Kernel(object):
         op = QT_RZDOC_NS_Filter(rzdoc)(op)
 
         op_ret = self.db_ctl.exec_op(op)
-        ts_created = self.exec_chain_commit_op(topo_diff, ctx, topo_diff.meta)
+        ts_created = self._exec_chain_commit_op(topo_diff, ctx, topo_diff.meta)
         topo_diff.meta['author'] = ctx.user_name
         topo_diff.meta['ts_created'] = ts_created
         op_ret['meta'] = topo_diff.meta
         return topo_diff, op_ret
 
+    @deco__DB_status_check
     def diff_commit__attr(self, attr_diff, ctx):
         """
         commit a graph attribute diff - this is a common pathway for:
@@ -265,28 +343,141 @@ class RZ_Kernel(object):
         op = QT_RZDOC_NS_Filter(rzdoc)(op)
 
         op_ret = self.db_ctl.exec_op(op)
-        ts_created = self.exec_chain_commit_op(attr_diff, ctx)
+        ts_created = self._exec_chain_commit_op(attr_diff, ctx)
         attr_diff.meta['author'] = ctx.user_name
         attr_diff.meta['ts_created'] = ts_created
         return attr_diff, op_ret
 
-    def exec_chain_commit_op(self, diff_obj, ctx, meta=None):
-
-        # FIXME: clean
-        if isinstance(diff_obj, Topo_Diff):
-            commit_obj = diff_obj.to_json_dict()
-        else:
-            commit_obj = diff_obj
-
-        rzdoc = ctx.rzdoc
-        op = DBO_block_chain__commit(commit_obj, ctx, meta)
-        op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
-        op_ret = self.db_ctl.exec_op(op)
-        return op_ret.meta['ts_created']
-
+    @deco__DB_status_check
     def load_node_set_by_id_attr(self, id_set, ctx=None):
         op = DBO_match_node_set_by_id_attribute(id_set=id_set)
         self.db_ctl.exec_op(op)
+
+    def aifnode__clone(self, aifnode, rzdoc, ctx=None):
+        """
+        Clone node, neighbours, comments..
+
+        @return Topo_Diff with node/link attributes
+        """
+#        filter_attribute_map="{'name':[something]}"
+#        op = DBO_match_node_id_set(filter_attribute_map)
+        op = DBO_aifnode__clone(aifnode)
+        op = QT_RZDOC_NS_Filter(rzdoc)(op)
+
+        topo_diff = self.db_ctl.exec_op(op)
+        return topo_diff
+
+    @deco__DB_status_check
+    def rzdoc__clone(self, rzdoc, ctx=None):
+        """
+        Clone entire rzdoc
+
+        @return Topo_Diff with node/link attributes
+        """
+        op = DBO_rzdoc__clone()
+        op = QT_RZDOC_NS_Filter(rzdoc)(op)
+
+        topo_diff = self.db_ctl.exec_op(op)
+        return topo_diff
+
+    @deco__DB_status_check
+    def rzdoc__commit_log(self, rzdoc, limit):
+        """
+        return commit log
+        """
+        op = DBO_rzdoc__commit_log(limit=limit)
+        op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
+
+        commit_log = self.db_ctl.exec_op(op)
+        return commit_log
+
+    def aifnode__create(self, aifnode_name, ctx=None):
+        """
+        Create & persist new AIFNode - may fail on unique name/id constraint violation
+
+        @return: AIFNode object
+        @raise AIFNode_Exception__already_exists
+        """
+        try:
+            self.cache_lookup__aifnode(aifnode_name)
+            raise AIFNode_Exception__already_exists(aifnode_name)
+        except AIFNode_Exception__not_found: pass
+
+        aifnode = AIFNode(aifnode_name)
+        aifnode.id = neo4j_util.generate_random_rzdoc_id()
+
+        op__aifnode__create = DBO_aifnode__create(aifnode)
+        op__block_chain__init = DBO_block_chain__init(aifnode)
+
+        self.db_ctl.exec_op(op__aifnode__create)
+        self.db_ctl.exec_op(op__block_chain__init)
+        return aifnode
+
+    @deco__DB_status_check
+    def rzdoc__create(self, rzdoc_name, ctx=None):
+        """
+        Create & persist new RZDoc - may fail on unique name/id constraint violation
+
+        @return: RZDoc object
+        @raise RZDoc_Exception__already_exists
+        """
+        try:
+            self.cache_lookup__rzdoc(rzdoc_name)
+            raise RZDoc_Exception__already_exists(rzdoc_name)
+        except RZDoc_Exception__not_found: pass
+
+        rzdoc = RZDoc(rzdoc_name)
+        rzdoc.id = neo4j_util.generate_random_rzdoc_id()
+
+        op__rzdoc__create = DBO_rzdoc__create(rzdoc)
+        op__block_chain__init = DBO_block_chain__init(rzdoc)
+
+        self.db_ctl.exec_op(op__rzdoc__create)
+        self.db_ctl.exec_op(op__block_chain__init)
+        return rzdoc
+
+    @deco__DB_status_check
+    def rzdoc__delete(self, rzdoc, ctx=None):
+        """
+        Delete RZDoc
+
+        @return: RZDoc object
+        """
+
+        op = DBO_rzdoc__delete(rzdoc)
+        self.db_ctl.exec_op(op)
+
+        self.cache__rzdoc_name_to_rzdoc.pop(rzdoc.name, None)
+
+        for r_assoc in self.rzdoc_reader_assoc_map[rzdoc]:
+            r_assoc.mark__invalid = True
+
+        # FIXME:
+        #    - broadcast delete event
+
+    def aifnode__lookup_by_name(self, aifnode_name, ctx=None):
+        """
+        @param ctx: may be None
+
+        @return: AIFNode object or None if aifnode was not found
+        """
+
+        op = DBO_aifnode__lookup_by_name(aifnode_name)
+
+        aifnode = self.db_ctl.exec_op(op)
+        return aifnode  # may be None
+    
+    @deco__DB_status_check
+    def rzdoc__lookup_by_name(self, rzdoc_name, ctx=None):
+        """
+        @param ctx: may be None
+
+        @return: RZDoc object or None if rzdoc was not found
+        """
+
+        op = DBO_rzdoc__lookup_by_name(rzdoc_name)
+        rzdoc = self.db_ctl.exec_op(op)
+        return rzdoc  # may be None
 
     def rzdoc__reader_subscribe(self,
                                 remote_socket_addr=None,
@@ -322,7 +513,7 @@ class RZ_Kernel(object):
                 rm_target = r_assoc
 
         if None == rm_target:  # target possibly removed after becoming stale
-            log.debug("rz_kernel: rzdoc__reader_unsubscribe: assoc not found: remote-address: %s" % (remote_socket_addr))
+            log.debug("rz_kernel: rzdoc__reader_unsubscribe: assoc not found: remote-address: %s" % (remote_socket_addr,))
             return
 
         r_assoc_set.remove(rm_target)  # FIXME: make thread safe
@@ -333,138 +524,19 @@ class RZ_Kernel(object):
         ret_list = list(rzdoc_r_set)
         return ret_list
 
-    def aifnode__clone(self, aifnode, rzdoc, ctx=None):
-        """
-        Clone node, neighbours, comments..
-
-        @return Topo_Diff with node/link attributes
-        """
-#        filter_attribute_map="{'name':[something]}"
-#        op = DBO_match_node_id_set(filter_attribute_map)
-        op = DBO_aifnode__clone(aifnode)
-        op = QT_RZDOC_NS_Filter(rzdoc)(op)
-
-        topo_diff = self.db_ctl.exec_op(op)
-        return topo_diff
-
-    def rzdoc__clone(self, rzdoc, ctx=None):
-        """
-        Clone entire rzdoc
-
-        @return Topo_Diff with node/link attributes
-        """
-        op = DBO_rzdoc__clone()
-        op = QT_RZDOC_NS_Filter(rzdoc)(op)
-
-        topo_diff = self.db_ctl.exec_op(op)
-        return topo_diff
-
-    def rzdoc__commit_log(self, rzdoc, limit):
-        """
-        return commit log
-        """
-        op = DBO_rzdoc__commit_log(limit=limit)
-        op = QT_RZDOC_Meta_NS_Filter(rzdoc)(op)
-
-        commit_log = self.db_ctl.exec_op(op)
-        return commit_log
-
-    def aifnode__create(self, aifnode_name, ctx=None):
-        """
-        Create & persist new AIFNode - may fail on unique name/id constraint violation
-
-        @return: AIFNode object
-        @raise AIFNode_Exception__already_exists
-        """
-        try:
-            self.cache_lookup__aifnode(aifnode_name)
-            raise AIFNode_Exception__already_exists(aifnode_name)
-        except AIFNode_Exception__not_found: pass
-
-        aifnode = AIFNode(aifnode_name)
-        aifnode.id = neo4j_util.generate_random_rzdoc_id()
-
-        op__aifnode__create = DBO_aifnode__create(aifnode)
-        op__block_chain__init = DBO_block_chain__init(aifnode)
-
-        self.db_ctl.exec_op(op__aifnode__create)
-        self.db_ctl.exec_op(op__block_chain__init)
-        return aifnode
-
-    def rzdoc__create(self, rzdoc_name, ctx=None):
-        """
-        Create & persist new RZDoc - may fail on unique name/id constraint violation
-
-        @return: RZDoc object
-        @raise RZDoc_Exception__already_exists
-        """
-        try:
-            self.cache_lookup__rzdoc(rzdoc_name)
-            raise RZDoc_Exception__already_exists(rzdoc_name)
-        except RZDoc_Exception__not_found: pass
-
-        rzdoc = RZDoc(rzdoc_name)
-        rzdoc.id = neo4j_util.generate_random_rzdoc_id()
-
-        op__rzdoc__create = DBO_rzdoc__create(rzdoc)
-        op__block_chain__init = DBO_block_chain__init(rzdoc)
-
-        self.db_ctl.exec_op(op__rzdoc__create)
-        self.db_ctl.exec_op(op__block_chain__init)
-        return rzdoc
-
-    def rzdoc__delete(self, rzdoc, ctx=None):
-        """
-        Delete RZDoc
-
-        @return: RZDoc object
-        """
-
-        op = DBO_rzdoc__delete(rzdoc)
-        self.db_ctl.exec_op(op)
-
-        self.cache__rzdoc_name_to_rzdoc.pop(rzdoc.name, None)
-
-        for r_assoc in self.rzdoc_reader_assoc_map[rzdoc]:
-            r_assoc.mark__invalid = True
-
-        # FIXME:
-        #    - broadcast delete event
-
-    def aifnode__lookup_by_name(self, aifnode_name, ctx=None):
-        """
-        @param ctx: may be None
-
-        @return: AIFNode object or None if aifnode was not found
-        """
-
-        op = DBO_aifnode__lookup_by_name(aifnode_name)
-
-        aifnode = self.db_ctl.exec_op(op)
-        return aifnode  # may be None
-    
-    def rzdoc__lookup_by_name(self, rzdoc_name, ctx=None):
-        """
-        @param ctx: may be None
-
-        @return: RZDoc object or None if rzdoc was not found
-        """
-
-        op = DBO_rzdoc__lookup_by_name(rzdoc_name)
-
-        rzdoc = self.db_ctl.exec_op(op)
-        return rzdoc  # may be None
-
-    def rzdoc__list(self, ctx=None):
+    @deco__DB_status_check
+    def rzdoc__search(self, search_query, ctx=None):
         """
         List available RZDocs
 
         @return: RZDoc object
         """
-        op = DBO_rzdoc__list()
+        rzdoc__name__max_length = self.db_metablock['rzdoc__name__max_length']
+        op = DBO_rzdoc__search(search_query, rzdoc__name__max_length)
         op_ret = self.db_ctl.exec_op(op)
         return op_ret
 
+    @deco__DB_status_check
     def rzdoc__rename(self, cur_name, new_name):
         op = DBO_rzdoc__rename(cur_name, new_name)
 

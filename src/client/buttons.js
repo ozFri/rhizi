@@ -1,78 +1,30 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 "use strict"
 
-define(['jquery', 'FileSaver', 'rz_core', 'rz_api_backend', 'view/selection'],
-function ($,       saveAs,      rz_core,   rz_api_backend,   selection) {
+define(['jquery', 'rz_core', 'rz_api_backend', 'view/selection', 'view/cmd_bar'],
+function ($,       rz_core,   rz_api_backend,   selection, view__cmd_bar) {
 $('.tutorial').click(function(){});
 
 var key="#47989379";
 
-
-$('.save a').click(function(){
-    var json = rz_core.main_graph.save_to_json();
-    console.log('saving to local storage ' + json.length + ' bytes');
-    localStorage.setItem(key, json);
-});
-
-$('#btn_export').click(function() {
-    var json = rz_core.main_graph.save_to_json(),
-        blob = new Blob([json], {type: 'application/json'}),
-        now = new Date(),
-        date_string = ('' + now.getYear() + now.getMonth() + now.getDay() + '-' +
-            now.getHours() + now.getMinutes() + now.getSeconds()),
-        filename = rz_config.rzdoc_cur__name + '-' + date_string + '.json';
-
-    console.log('saving ' + json.length + ' bytes to ' + filename);
-    saveAs(blob, filename);
-});
-
-$('.url-copy a').click(function() {
-    var json = rz_core.main_graph.save_to_json();
-    // TODO use jquery BBQ $.param({json: json});
-    var encoded = document.location.origin + '/?json=' + encodeURIComponent(json);
-    window.prompt('Copy to clipboard: Ctrl-C, Enter (or Cmd-C for Mac)', encoded);
-});
-
-var really_load = function() {
-  if (!rz_core.main_graph.empty()) {
-    return confirm('Current work will be merged with the new import, are you sure?');
-  }
-  return true;
-}
-
-$('.file-import').on('change', function(event) {
-    var file = event.target.files[0];
-    var reader;
-
-    if (!really_load()) {
-        return;
-    }
-    if (file === undefined) {
-        return;
-    }
-    console.log(file);
-    reader = new FileReader();
-    reader.onload = (function(theFile) {
-        return function(e) {
-            var result = e.target.result;
-            if (e.target.readyState === FileReader.DONE) {
-                console.log('done reading ' + theFile.name);
-                console.log('got #' + result.length + ' bytes in ' + typeof(result));
-                rz_core.load_from_json(result);
-            }
-        }
-    })(file);
-    reader.readAsText(file, "text/javascript");
-});
-
-$('.local-storage-load a').click(function(){
-  if (!really_load()) {
-      return;
-  }
-  var json_blob = localStorage.getItem(key)
-  rz_core.load_from_json(json_blob);
-});
-
-var logout_button = $('#btn-logout');
+var logout_button = $('#top-bar__logout-btn');
 logout_button.click(function() {
     $.ajax({
         type: "POST",
@@ -94,113 +46,71 @@ $('a.save-history').click(function () {
     rz_core.main_graph.history.save_to_file();
 });
 
-$('#btn_rzdoc__new').click(function() {
+$('#menu-bar__rzdoc-open').click(function() {
 
-    var cmd_bar,
-        cmd_bar_body,
-        submit_btn,
-        close_btn;
+    var cmd_bar;
 
-    cmd_bar = $('#cmd_bar__rzdoc_new');
+    cmd_bar = $('#cmd-bar__rzdoc-search');
     if (cmd_bar.length > 0) { // cmd bar present
-        cmd_bar.fadeToggle(400, function() {
-            cmd_bar.remove();
-        });
+        cmd_bar.remove();
         return;
     }
 
-    cmd_bar = $('<div class="cmd-bar" id="cmd_bar__rzdoc_new">');
-    cmd_bar_body = $('<div class="cmd-bar_body" id="cmd_bar__rzdoc_new__body">');
+    rz_core.rzdoc__search(''); // this should match all existing documents
+});
 
-    close_btn = $('<div id="cmd_bar__rzdoc_close">x</div>');
-    close_btn.addClass('toolbar__close_btn');
+$('#menu-bar__rzdoc-new').click(function() {
 
+    var cmd_bar,
+        cmd_bar_body,
+        e_input,
+        submit_btn;
+
+    cmd_bar = $('#cmd-bar__rzdoc-new');
+    if (cmd_bar.length > 0) { // cmd bar present
+        cmd_bar.remove();
+        return;
+    }
+
+    cmd_bar = view__cmd_bar.new_cmdbar("rzdoc-new");
+
+    cmd_bar_body = $('<div>')
     submit_btn = $('<span class="cmd-bar_btn" id="cmd_bar__rzdoc_new__submit">Create</span>');
-
-    cmd_bar.append(close_btn);
-    cmd_bar.append(cmd_bar_body);
-    cmd_bar.append($('<div class="cmd-bar_close_bar">Create new Rhizi</div>'));
-
-    cmd_bar_body.append('<label for="cmd_bar__rzdoc_new__input" id="cmd_bar__rzdoc_new__label">Rhizi Title:');
-    cmd_bar_body.append('<input id="cmd_bar__rzdoc_new__input">');
+    e_input = $('<input id="cmd_bar__rzdoc_new__input">');
+    e_input.attr('placeholder', 'Rhizi Title');
+    cmd_bar_body.append(e_input);
     cmd_bar_body.append(submit_btn);
 
-    cmd_bar.css('display', 'none');
-
-    cmd_bar.insertAfter('.top-bar');
+    cmd_bar.append_to_body(cmd_bar_body);
 
     // submit
     submit_btn.attr('tabindex', 1); // assume focus on next tab key press
     submit_btn.on('click', function() {
         var rzdoc_name = $('#cmd_bar__rzdoc_new__input').val();
         rz_core.rzdoc__create_and_open(rzdoc_name);
+        cmd_bar.hide();
+        cmd_bar.remove();
     });
-    cmd_bar.on('keyup', function(event) { // create on Enter key pressed
+    cmd_bar_body.on('keyup', function(event) { // create on Enter key pressed
         if(event.keyCode == 13) {
             submit_btn.click();
         }
     });
 
-    // close
-    close_btn.on('click', function() {
-        cmd_bar.remove();
-    });
-
-    cmd_bar.fadeToggle(400);
+    cmd_bar.insert();
+    cmd_bar.show();
 });
 
-$('#btn_rzdoc__open').click(function() {
-    var cmd_bar,
-        cmd_bar_body,
-        close_btn;
+$('#menu-bar__rzdoc-search').on('keypress', function(e) {
 
-    cmd_bar = $('#cmd_bar__rzdoc_open');
-    if (cmd_bar.length > 0) { // cmd bar present
-        cmd_bar.fadeToggle(400, function() {
-            cmd_bar.remove();
-        });
-        return;
+    var search_query;
+
+    if (13 != e.keyCode) {
+        return true;
     }
 
-    cmd_bar = $('<div class="cmd-bar" id="cmd_bar__rzdoc_open">');
-    cmd_bar.css('display', 'none');
-
-    close_btn = $('<div id="cmd_bar__rzdoc_close">x</div>');
-    close_btn.addClass('toolbar__close_btn');
-    close_btn.appendTo(cmd_bar);
-
-    cmd_bar_body = $('<div class="cmd-bar_body" id="cmd_bar__rzdoc_open__rzdoc_list">');
-    cmd_bar.append(cmd_bar_body);
-
-    cmd_bar.append($('<div class="cmd-bar_close_bar">Open Rhizi</div>'));
-    cmd_bar.insertAfter('.top-bar');
-
-    // close
-    close_btn.on('click', function() {
-        cmd_bar.remove();
-    });
-
-    var on_success = function (rzdoc_name_list) {
-        rzdoc_name_list.sort();
-        for (var i = 0; i < rzdoc_name_list.length; i++) {
-            var rzdoc_item = $('<div class="cmd_bar__rzdoc_open__item"><span title="Open Rhizi">' + rzdoc_name_list[i] + '</span></div>');
-            cmd_bar_body.append(rzdoc_item);
-        }
-        $('.cmd_bar__rzdoc_open__item').on('click', function(click_event) { // attach common click handler
-            var rzdoc_name = click_event.currentTarget.textContent;
-            var rzdoc_cur_name = rz_core.rzdoc__current__get_name();
-            if (rzdoc_name == rzdoc_cur_name) {
-                console.log('rzdoc__open: ignoring request to reopen currently rzdoc: name: ' + rzdoc_cur_name);
-                cmd_bar.remove();
-                return;
-            }
-
-            rz_core.rzdoc__open(rzdoc_name);
-        });
-    }
-
-    rz_api_backend.rzdoc_list(on_success); // TODO: handle doc list timeout
-    cmd_bar.fadeToggle(400);
+    search_query = $('#menu-bar__rzdoc-search__input').val();
+    rz_core.rzdoc__search(search_query);
 });
 
 function log_scale(max_in, min_out, max_out) {

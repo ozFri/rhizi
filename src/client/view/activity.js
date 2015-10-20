@@ -1,10 +1,27 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 define(['jquery', 'underscore', 'Bacon', 'view/selection'],
 function($,        _,            Bacon,        selection) {
 
 var MINUTE_IN_MSEC = 60000;
 
 var incomingActivityBus = new Bacon.Bus(),
-    activity_element,
     graph_view_element,
     graph_view,
     graph,
@@ -35,7 +52,7 @@ function link_ids_from_diff(diff)
     return is_attr(diff) ? _.keys(diff['__type_link']) : _.pluck(diff.link_set_add, 'id');
 }
 
-function topo_explanation(diff)
+function diff_to_summary_str__topo(diff)
 {
     var nodes_added = _.pluck(diff.node_set_add, 'name'),
         links_added = _.pluck(diff.link_set_add, 'name');
@@ -45,15 +62,17 @@ function topo_explanation(diff)
         (links_added.length > 0 ? 'added ' + links_added.join(' ') + ' links' : '');
 }
 
-function attr_explanation(diff)
+function diff_to_summary_str__attr(diff)
 {
     //var nodes_changed = _.map(diff.__type_node0
     var nodes_changed,
         links_changed;
 
-    function collect(root, find) {
+    function collect(root, graph_elem_find_func) {
         return _.map(_.keys(root), function (id) {
-                var writes = root[id].__attr_write,
+                var e_name_or_id,
+                    cur_graph_elem,
+                    writes = root[id].__attr_write,
                     ret = [];
 
                 _.each(_.keys(writes), function (key) {
@@ -68,7 +87,11 @@ function attr_explanation(diff)
                 _.map(root[id].__attr_remove, function (id) {
                     ret.push(id + ' removed');
                 });
-                return find(id).name + ': ' + ret.join(', '); /* TODO: use the previous name of the node, not the new name */
+
+                // attempt name resolution
+                cur_graph_elem = graph_elem_find_func(id);
+                e_name_or_id = (cur_graph_elem && cur_graph_elem.name) || id; // use id as fallback, eg. when element not present in current graph
+                return e_name_or_id + ': ' + ret.join(', '); /* TODO: use the previous name of the node, not the new name */
             });
     }
     nodes_changed = collect(diff.__type_node, graph.find_node__by_id);
@@ -76,13 +99,13 @@ function attr_explanation(diff)
     return (nodes_changed.concat(links_changed)).join(';');
 }
 
-function explanation_from_diff(diff)
+function diff_to_summary_str(diff)
 {
     if (is_topo(diff)) {
-        return topo_explanation(diff);
+        return diff_to_summary_str__topo(diff);
     }
     if (is_attr(diff)) {
-        return attr_explanation(diff);
+        return diff_to_summary_str__attr(diff);
     }
 
 }
@@ -125,7 +148,7 @@ function Activity(diff)
         affected_link_ids = link_ids_from_diff(diff),
         author = meta.author || 'Anonymous',
         sentence = meta.sentence,
-        explanation = (sentence !== undefined && sentence.length > 0) ? sentence : explanation_from_diff(diff);
+        explanation = (sentence !== undefined && sentence.length > 0) ? sentence : diff_to_summary_str(diff);
 
     this.div = new_div;
     if (is_topo(diff)) {
@@ -143,7 +166,7 @@ function Activity(diff)
     this.affected_node_ids = affected_node_ids;
     this.affected_link_ids = affected_link_ids;
     this.author_element = $('<span class="activity__entry__author">by ' + author + '</span>'),
-    this.explanation_element = $('<span class="activity__entry__summery">' + explanation + '</span>');
+    this.explanation_element = $('<span class="activity__entry__summary">' + explanation + '</span>');
     this.time_ago_element = $('<span class="activity__entry__date"></span>');
     new_div.append([this.explanation_element, this.author_element, this.time_ago_element]);
 
@@ -188,6 +211,7 @@ function appendActivity(diff)
     user_notifications_element.prepend(notification.div);
     notificounter += 1
     document.getElementById("user_notifications__header").textContent = notificounter;
+    $('#activity_view__body').prepend(activity.div);
     // TODO - only update visible (visible_in / out hooks?)
     // TODO - x button
     // TODO - user name (requires protocol update?)
@@ -206,7 +230,7 @@ function update_ago()
 function clear()
 {
     activities.splice(0); // reset activities
-    activity_element.empty();
+    $('#activity_view__body').empty();
 }
 
 function init(_graph, _graph_view, _graph_view_element)
@@ -217,8 +241,8 @@ function init(_graph, _graph_view, _graph_view_element)
     graph_view = _graph_view;
     graph = _graph;
     setInterval(update_ago, MINUTE_IN_MSEC);
-    $('#activity_view__header').on('click', function() {
-        activity_element.toggle();
+    $('#checkbox__activity-view-toggle').on('change', function() {
+        $('#activity_view').toggle();
     });
     userfeed_element = $('#user_notifications__body');
     setInterval(update_ago, MINUTE_IN_MSEC);

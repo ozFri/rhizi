@@ -1,12 +1,30 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """
 Cypher language parser
    - clear logical separation between lexing/parsing still missing
    - e_XXX class object should be considered internal
 """
 
-import re
 from collections import defaultdict
 import logging
+import re
+
 
 #
 # Tokens
@@ -186,7 +204,7 @@ class pt_abs_composite_node(pt_abs_node):
         Spawn child node:
            - set child's parent ref. to this object
            - add child node as sub exp.
-           
+
         This method should be overridden by subclasses
         """
         self.assert_child_spawn_type(n_type)
@@ -200,7 +218,7 @@ class pt_abs_composite_node(pt_abs_node):
         """
         @param exp_type_or_set: type or set of types to check against using isinstance()
         @param recurse: whether to recursively search within sub expressions
-        
+
         @return: set of matched sub expressions who match the given type set, possibly empty
         """
 
@@ -214,9 +232,9 @@ class pt_abs_composite_node(pt_abs_node):
                 if isinstance(n, exp_type): ctx += [n]
 
         if False == recurse:
-            f_recurse = lambda _n, _ctx, depth: depth <= 1 # [!] visit child nodes only 
+            f_recurse = lambda _n, _ctx, depth: depth <= 1  # [!] visit child nodes only
         if True == recurse:
-            f_recurse = lambda _n, _ctx, _depth: True # recurse
+            f_recurse = lambda _n, _ctx, _depth: True  # recurse
         return self.tree_walk__pre(f_visit=f_visit, f_recurse=f_recurse, ctx=[])
 
     def tree_walk__pre(self, f_pre=lambda n, ctx: None,
@@ -264,11 +282,11 @@ class e_value(pt_abs_node):
 
     @classmethod
     def rgx__unquoted(self, g_name='value'):
-        return '(?P<%s>[\w\d_]+(\*\d*\.\.\d*)?)' % (g_name)
+        return '(?P<%s>[\w\d/|_?]+)' % (g_name)
 
     @classmethod
     def rgx__quoted(self, g_name='value', quote_tok='\''):
-        return '%s(?P<%s>[\w\d_\-\s]+(\*\d*\.\.\d*)?)%s' % (quote_tok, g_name, quote_tok)
+        return '%s(?P<%s>[\w\d\.,_/|:?"\'\-\s]+)%s' % (quote_tok, g_name, quote_tok)
 
     def str__tok_open(self):
         if self.quoted: return self.quote_tok
@@ -286,13 +304,16 @@ class e_ident(pt_abs_node):  # identifier
     def rgx(self, g_name='ident'):
         return '(?P<%s>[\w_]+)' % (g_name)
 
-class e_path_quantifier(pt_abs_node):  # path quantifier
+class e_multiplicity(pt_abs_node):  # multiplicity for relations
 
-    def __init__(self): super(e_path_quantifier, self).__init__()
+    def __init__(self): super(e_multiplicity, self).__init__()
 
     @classmethod
-    def rgx(self, g_name='pathquantifier'):
-        return '(?P<%s>[\*\d\.\.\d]+)' % (g_name)
+    def rgx(self):
+        return '(?P<value>(\*)?(\d+)?(\.\.)?(\d+)?)'
+
+    def str__tok_close(self):
+        return ''
 
 class e_param(e_ident):
     """
@@ -500,7 +521,8 @@ class p_rel(pt_abs_composite_node):  # rel pattern: '[...]'
         self.is_directional = False
 
     def str__tok_sibling_delim(self, sib_a=None, sib_b=None):
-        if isinstance(sib_a, e_ident) and isinstance(sib_b, e_label_set):
+        if ((isinstance(sib_a, e_ident) and isinstance(sib_b, e_label_set))
+            or isinstance(sib_b, e_multiplicity)):
             return ''  # handled by label_set
         return ' '
 
@@ -539,9 +561,9 @@ class Cypher_Parser(object):
     Neo4J Cypher language parser - conventions:
        - read_xxx functions: should adjust argument node without modifying parse tree
        - parse_xxx functions:
-          - caller should spawn correct current node 
+          - caller should spawn correct current node
           - should handle current node closing
-          - default parse case should recurse up via parent node 
+          - default parse case should recurse up via parent node
     """
 
     def __init__(self):
@@ -605,6 +627,12 @@ class Cypher_Parser(object):
         n_value.value = m.group('value')
         return m.group('suffix')
 
+    def read__e_multiplicity(self, input, n_multiplicity):
+        rgx = r'^%s%s' % (e_multiplicity.rgx(), self.rgx__suffix)
+        m = self.__match(rgx, input, re.UNICODE)
+        n_multiplicity.value = m.group('value')
+        return m.group('suffix')
+
     def parse__e_attr_set(self, input, n_cur):
         if ' ' == input[0]: return self.__parse(input[1:], n_cur)  # consume
 
@@ -630,10 +658,9 @@ class Cypher_Parser(object):
         return self.__parse(input, n_cur)
 
     def parse__e_clause_create_or_match(self, input, n_cur):
-        if ' ' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume    
-        if 'p' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
-        if '=' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
-        if '(' == input[0]: return self.parse__node_or_rel(input, n_cur)  # open node or path
+        if ' ' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
+
+        if '(' == input[0]: return self.parse__node(input, n_cur)  # open node or path
 
         if ',' == input[0]:  # open sibling
             assert len(n_cur.sub_exp_set) >= 2 and e_keyword == n_cur.sub_exp_set[0].__class__
@@ -668,8 +695,8 @@ class Cypher_Parser(object):
         n_cur = n_cur.parent
         return self.__parse(suffix, n_cur)
 
-    def parse__e_path_quantifier(self, input, n_cur):
-        suffix = self.read__e_path_quantifier(input, n_cur)
+    def parse__e_multiplicity(self, input, n_cur):
+        suffix = self.read__e_multiplicity(input, n_cur)
         n_cur = n_cur.parent
         return self.__parse(suffix, n_cur)
 
@@ -683,7 +710,7 @@ class Cypher_Parser(object):
         if ':' == input[0]:  # open sibling
             return self.parse__e_val_or_param(input[1:], n_cur)
 
-        if not n_cur.is_set__value(): # kv_pair key yet to be set
+        if not n_cur.is_set__value():  # kv_pair key yet to be set
             n_cur = n_cur.spawn_child(e_ident)
             return self.__parse(input, n_cur)
 
@@ -711,6 +738,9 @@ class Cypher_Parser(object):
         if input[0] in [')', ']']:
             n_cur = n_cur.parent
             return self.__parse(input, n_cur)
+        if '*' == input[0]: # multiplicity, let parent parse
+            n_cur = n_cur.parent
+            return self.__parse(input, n_cur)
         assert False
 
     def parse__e_param(self, input, n_cur):
@@ -728,8 +758,8 @@ class Cypher_Parser(object):
     def parse__e_set(self, input, n_cur):
         if ' ' == input[0]: return self.__parse(input[1:], n_cur)  # consume
 
-        if '(' == input[0]:  # open node or path
-            return self.parse__node_or_rel(input, n_cur)
+        if '(' == input[0]:  # open node
+            return self.parse__node(input, n_cur)
 
         n_cur = n_cur.parent
         return self.__parse(input, n_cur)
@@ -741,7 +771,46 @@ class Cypher_Parser(object):
         n_cur = n_cur.parent
         return self.__parse(suffix, n_cur)
 
-    def parse__node_or_rel(self, input, n_cur):
+    def parse__rel(self, input, n_cur):
+        if ' ' == input[0]: return self.__parse(input[1:], n_cur)  # consume
+
+        if input.startswith('-['):  # open rel
+            n_cur = n_cur.spawn_child(p_rel)
+            return self.parse__rel(input[2:], n_cur)
+
+        if ':' == input[0]:  # open label set
+            n_cur = n_cur.spawn_child(e_label_set)
+            n_cur = n_cur.spawn_child(e_value)
+            return self.__parse(input[1:], n_cur)
+
+        if input.startswith(']-'):  # close directional-rel
+            if input.startswith(']->'):  # close directional-rel
+                n_cur.is_directional = True
+                n_cur = n_cur.parent
+                return self.parse__node(input[3:], n_cur)
+
+            n_cur = n_cur.parent
+            return self.parse__node(input[2:], n_cur)
+
+        if '{' == input[0]:  # open attr-set
+            n_cur = n_cur.spawn_child(e_attr_set)
+            return self.__parse(input[1:], n_cur)
+
+        rgx_opt_id = r'^%s' % (e_ident.rgx('ident'))
+        m = re.match(rgx_opt_id, input)
+        if m:
+            n_cur = n_cur.spawn_child(e_ident)
+            return self.__parse(input, n_cur)
+
+        m = re.match(e_multiplicity.rgx(), input)
+        if m:
+            n_cur = n_cur.spawn_child(e_multiplicity)
+            return self.__parse(input, n_cur)
+
+        assert False
+
+
+    def parse__node(self, input, n_cur):
         if ' ' == input[0]: return self.__parse(input[1:], n_cur)  # consume
 
         if ':' == input[0]:  # open label set
@@ -751,30 +820,17 @@ class Cypher_Parser(object):
 
         if '(' == input[0]:  # open node
             n_cur = n_cur.spawn_child(p_node)
-            return self.parse__node_or_rel(input[1:], n_cur)
-        
-        if ')' == input[0]:  # close node/path
-            if input.startswith(')-'):  # open path
+            return self.parse__node(input[1:], n_cur)
+
+        if ')' == input[0]:  # close node
+            if input.startswith(')-'):  # open rel
                 n_cur = n_cur.rotate__pin_under_new_parent(p_path)
-                return self.parse__node_or_rel(input[1:], n_cur)
+                return self.parse__rel(input[1:], n_cur)
 
             n_cur = n_cur.parent
             if n_cur.__class__ == p_path:
                 n_cur = n_cur.parent
             return self.__parse(input[1:], n_cur)
-
-        if input.startswith('-['):  # open rel
-            n_cur = n_cur.spawn_child(p_rel)
-            return self.parse__node_or_rel(input[2:], n_cur)
-
-        if input.startswith(']-'):  # close directional-rel
-            if input.startswith(']->'):  # close directional-rel
-                n_cur.is_directional = True
-                n_cur = n_cur.parent
-                return self.parse__node_or_rel(input[3:], n_cur)
-
-            n_cur = n_cur.parent
-            return self.parse__node_or_rel(input[2:], n_cur)
 
         if '{' == input[0]:  # open attr-set
             n_cur = n_cur.spawn_child(e_attr_set)
@@ -840,8 +896,8 @@ class Cypher_Parser(object):
         if isinstance(n_cur, e_clause__where): return self.parse__e_clause__common(input, n_cur)
         if isinstance(n_cur, e_clause): return self.parse__e_clause__common(input, n_cur)
 
-        if isinstance(n_cur, p_rel): return self.parse__node_or_rel(input, n_cur)
-        if isinstance(n_cur, p_node): return self.parse__node_or_rel(input, n_cur)
+        if isinstance(n_cur, p_rel): return self.parse__rel(input, n_cur)
+        if isinstance(n_cur, p_node): return self.parse__node(input, n_cur)
 
         if isinstance(n_cur, e_label_set): return self.parse__e_label_set(input, n_cur)
         if isinstance(n_cur, e_attr_set): return self.parse__e_attr_set(input, n_cur)

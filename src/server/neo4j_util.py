@@ -1,3 +1,20 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 """
  Utility code in speaking the neo4j REST api
 """
@@ -5,16 +22,15 @@
 import json
 import six
 import string
-import time
 import uuid
 
 import model
+from neo4j_cypher_parser import tok__quote__backquote, tok__quote__singlequote
+import neo4j_schema
 from six.moves.urllib import request
 import six.moves.urllib_error as urllib_error
 from util import debug_log_duration
-import re
-from neo4j_cypher_parser import tok__quote__backquote, tok__quote__singlequote
-import neo4j_schema
+
 
 class Neo4JException(Exception):
     def __init__(self, error_set):
@@ -72,7 +88,7 @@ def rzdoc__ns_label(rzdoc):
     """
     return neo4j_schema.META_LABEL__RZDOC_NS_PREFIX + rzdoc.id
 
-def rzdoc__meta_ns_label(rzdoc): 
+def rzdoc__meta_ns_label(rzdoc):
     """
     [!] must be quoted when used in queries
     """

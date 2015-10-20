@@ -1,6 +1,25 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Dor Garbash, Amir Sagie and Alon Levy
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 @import '../modules/mixins'; // For box-shadow
 
 .input-container {
+  left: $graph-margin-left;
   width: 35%;
 
   form {
@@ -25,7 +44,6 @@
 }
 
 #input-container__search {
-  left: 24px;
   margin-top: $two-baselines;
   position: absolute;
 }
@@ -33,7 +51,6 @@
 #input-container__graph-input {
   position: absolute;
   margin-top: 80px;
-  left: 24px;
   height: 36px;
   line-height: initial;
   &:focus {
@@ -166,4 +183,8 @@
 
 .analyser-span-space-link-node {
     color: blue;
+}
+
+.input-help-text {
+    color: $mid-grey;
 }

@@ -1,3 +1,21 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 /* view of a single graph in a graph tree.
  *
  * Usage is of a two graph system:
@@ -25,10 +43,10 @@
  * which resulted in overly complex (read: undefined/buggy) code.
  */
 
-define(['d3',  'Bacon', 'consts', 'util', 'view/selection', 'model/diff', 'view/item_info', 'view/bubble', 'model/types', 'view/layouts'],
-function(d3 ,   Bacon,   consts,   util ,  selection      ,  model_diff  ,  item_info,        view_bubble,   model_types,   view_layouts) {
+define(['d3',  'Bacon', 'consts', 'util', 'view/selection', 'model/diff', 'view/item_info', 'view/bubble', 'model/types', 'view/layouts', 'view/filter'],
+function(d3 ,   Bacon,   consts,   util ,  selection      ,  model_diff  ,  item_info,        view_bubble,   model_types,   view_layouts,  view_filter) {
 
-"use strict"
+"use strict";
 
 // aliases
 var obj_take = util.obj_take;
@@ -49,7 +67,7 @@ function enableDebugViewOfDiffs(graph)
     debugView.innerHTML = '<div>debug view</div>';
     debugView.append = function (diff) {
         debugView.innerHTML = debugView.innerHTML + '<div>' + diff + '</div>';
-    }
+    };
     graph.diffBus.onValue(function (diff) {
         debugView.append(diff);
     });
@@ -60,75 +78,6 @@ function translate(x, y) {
         console.log('oops, undefined translate');
     }
     return "translate(" + x + "," + y + ")";
-}
-
-function init_checkboxes(graph, update_view) {
-    var // FIXME take filter names from index.html or both from graph db
-        filter_states = _.object(_.map(model_types.nodetypes, function (type) { return [type, null]; }));
-
-    function create_checkboxes() {
-        var root = $('#menu__type-filter');
-
-        _.each(model_types.nodetypes, function (type) {
-            var input = $('<input type="checkbox" checked="checked">'),
-                div = $('<div class="menu__type-filter_item"></div>');
-
-            input.attr("name", type);
-            div.append(input);
-            div.append(util.capitalize(type));
-            root.append(div);
-        });
-    }
-
-    function read_checkboxes() {
-        var name,
-            value,
-            // jquery map does flattens, and we don't want that
-            checkboxes = _.map($('#menu__type-filter input'),
-                function (checkbox) {
-                        return [checkbox.name, checkbox.checked];
-                    }
-                );
-        for (var i in checkboxes) {
-            name = checkboxes[i][0];
-            value = checkboxes[i][1];
-            if (undefined === filter_states[name]) {
-                continue;
-            }
-            filter_states[name] = value;
-        }
-        return filter_states;
-    }
-
-    create_checkboxes();
-    read_checkboxes();
-    function filtered_states() {
-        var o = read_checkboxes(),
-            ret = {};
-
-        _.each(_.keys(o), function(type) {
-            if (!o[type]) {
-                ret[type] = 1;
-            }
-        });
-        return ret;
-    }
-    //$('.menu__type-filter_item,.menu__type-filter_item input')
-    $('#menu__type-filter')
-        .asEventStream('click')
-        .onValue(function (e) {
-            var inp = $(e.target).find('input')[0];
-
-            if (inp && inp.checked !== undefined) {
-                inp.checked = !inp.checked;
-                e.preventDefault();
-            }
-            e.stopPropagation();
-            graph.node__set_filtered_types(filtered_states());
-            update_view(true);
-        })
-
-    return filter_states;
 }
 
 // "CSS" for SVG elements. Reused for editing elements.
@@ -176,7 +125,6 @@ function GraphView(spec) {
         layout,
         drag,
         vis,
-        deliverables,
         filter_states,
 
         zen_mode = false,
@@ -207,6 +155,13 @@ function GraphView(spec) {
     $(window).asEventStream('resize').map(update_window_size).onValue(function () { update_view(false); });
     update_window_size();
 
+    // read updated filter states from filters view
+    view_filter.filter_states_bus.onValue(function (new_states) {
+        filter_states = new_states;
+        graph.node__set_filtered_types(filter_states);
+        update_view(true);
+    });
+
     function node__pass_filter(d) {
         var state = filter_states && filter_states[d.type];
 
@@ -215,24 +170,6 @@ function GraphView(spec) {
 
     function link__pass_filter(d) {
         return node__pass_filter(d.__src) && node__pass_filter(d.__dst);
-    }
-
-
-    // Filter. FIXME: move away from here. separate element, connected via bacon property
-    if (!temporary) {
-        filter_states = init_checkboxes(graph, update_view);
-    }
-
-    function range(start, end, number) {
-        var ret = [],
-            i,
-            divisor = number <= 1 ? 1 : number - 1,
-            difference = end - start;
-
-        for (i = 0; i < number; ++i) {
-            ret.push(difference * i / divisor + start);
-        }
-        return ret;
     }
 
     // TODO: nice animation FRP using Bacon combine/flatMap.
@@ -265,17 +202,64 @@ function GraphView(spec) {
     }
 
     var selection_outer_radius = 0; //200;
-    // HACK to load positions stored locally: on the first diff, which is the result of the
-    // initial clone, load positions from stored last settled position (see record_position_to_local_storage
-    // and restore_position_from_local_storage)
-    // this is before we have proper layout recording in the database, loaded together with the nodes
-    // and links.
-    graph.diffBus.take(1).onValue(restore_position_from_local_storage);
 
     graph.diffBus.onValue(function (diff) {
-        var relayout = !temporary && (false == model_diff.is_attr_diff(diff));
+        var relayout = !temporary && (false === model_diff.is_attr_diff(diff)),
+            have_position = 0,
+            layout_x_key = graph.layout_x_key(layout.name),
+            layout_y_key = graph.layout_y_key(layout.name),
+            layout_fixed_key = graph.layout_fixed_key(layout.name),
+            nodes_from_attr_diff = function() { var ret = []; diff.for_each_node(function (nid) { ret.push(graph.find_node__by_id(nid)); }); return ret; },
+            changed_nodes = diff.node_set_add || (diff.for_each_node && nodes_from_attr_diff()) || [],
+            is_full_graph_update = false,
+            nodes = graph.nodes();
+
+        // copy position from diff based on current layout
+        if (layout.name) {
+            changed_nodes.forEach(function (node) {
+                if (node[layout_x_key] && node[layout_y_key]) {
+                    node.x = node[layout_x_key];
+                    node.y = node[layout_y_key];
+                    node.fixed = node[layout_fixed_key];
+                    have_position += 1;
+                }
+            });
+            is_full_graph_update = (have_position === nodes.length);
+            if (have_position > 0) {
+                console.log('loading layout last position from database for layout ' + layout.name);
+                layout__load_graph();
+                if (is_full_graph_update) {
+                    console.log('no relayout because diff contains all graph nodes');
+                    relayout = false;
+                }
+            }
+        }
+        if (!temporary && !relayout && have_position === 0) {
+            // avoid recursion due to layout triggering sending of new positions to db, resulting in a new diff update
+            return;
+        }
+        if (is_full_graph_update) {
+            layout__set_from_nodes(layout.name, changed_nodes);
+        }
         update_view(relayout);
     });
+
+    function layout__set_from_nodes(name, nodes) {
+        var layout_ = layouts.filter(function (layout_) { return layout_.name === name; })[0],
+            layout_x_key = graph.layout_x_key(layout_.name),
+            layout_y_key = graph.layout_y_key(layout_.name),
+            nodes_with_x_y = nodes.map(function (node) {
+                var x = node[layout_x_key],
+                    y = node[layout_y_key];
+
+                if (!x || !y) {
+                    return undefined;
+                }
+                return {id: node.id, x: x, y: y};
+            }).filter(function (datum) { return datum !== undefined; });
+
+        layout_.save_from_arr_id_x_y(nodes_with_x_y);
+    }
 
     function transformOnSelection(data) {
         var selection = data[0],
@@ -306,7 +290,7 @@ function GraphView(spec) {
                 function (n) { return n.x * n.x + n.y * n.y; }))) / s;
 
         function screen_to_graph(xy) {
-            return [zcx + xy[0], zcy + xy[1]]
+            return [zcx + xy[0], zcy + xy[1]];
         }
         // order by angle
         var nodes = _.pluck(selection.root_nodes.map(function (n) { return [Math.atan2(n.y, n.x), n]; }).sort(), 1);
@@ -343,7 +327,7 @@ function GraphView(spec) {
 
     function showNodeInfo(node) {
         util.assert(!temporary, "cannot showNodeInfo on a temporary graph");
-        item_info.show(graph, node)
+        item_info.show(graph, node);
     }
 
     function dragstarted(d) {
@@ -362,10 +346,8 @@ function GraphView(spec) {
 
     function setupInitialPositions()
     {
-        var nodes = graph.nodes(),
-            links = graph.links(),
+        var links = graph.links(),
             i = 0,
-            node,
             link;
 
         // right thing: place node opposite center of mass of existing links
@@ -395,21 +377,21 @@ function GraphView(spec) {
     function dragended(d) {
         d3.select(this).classed("dragging", false);
         d3.select(this).classed("fixed", true); // TODO: this is broken since we override all the classes. Need to switch to class addition/removal (i.e. use classed for everything) or set class in one location (so here just set a value on the node, not the element)
-        if (d.dragstart.clientX - d3.event.sourceEvent.clientX != 0 ||
-            d.dragstart.clientY - d3.event.sourceEvent.clientY != 0) {
+        if (d.dragstart.clientX - d3.event.sourceEvent.clientX !== 0 ||
+            d.dragstart.clientY - d3.event.sourceEvent.clientY !== 0) {
             d.fixed = true;
             d.px = d.x;
             d.py = d.y;
             tick();
-            layout.resume();
+            if (layout.name === 'custom') {
+                graph.nodes__store_layout_positions(layout.name, [d.id]);
+            }
         }
     }
 
     var urlValid = function(url) {
         return url !== undefined && url !== null && url.length > 0 && url.slice(0, 4) === 'http';
     };
-
-    var image_endings = {'jpg':1, 'gif':1, 'png':1, 'bmp':1, 'svg':1};
 
     var urlImage = function(url) {
         return urlValid(url);
@@ -432,10 +414,34 @@ function GraphView(spec) {
     }
 
     function node__transform(d) {
-        var bx = d.bx || 0,
-            by = d.by || 0;
-
         return translate(d.bx, d.by);
+    }
+
+    function model_id_from_dom_id(dom_id) {
+        return dom_id.split('__')[0];
+    }
+
+    function node__radius (d) {
+        return urlValid(d['image-url']) ? 20 : 10;
+    }
+    function filter_id(id) {
+        return id + '__node_filter';
+    }
+    function feimage_id(id) {
+        return id + '__node_filter_feimage';
+    }
+    function clip_path_id(id) {
+        return id + '__node_clip_path';
+    }
+    function svg_url(id) {
+        return 'url(#' + id + ')';
+    }
+
+    var node__text_x = function(d) {
+        return node_text_dx + node__radius(d) + (urlValid(d.url) ? node_url_dx : 0);
+    };
+
+    function graphics__node_text(node) {
     }
 
     function update_view(relayout) {
@@ -455,14 +461,6 @@ function GraphView(spec) {
             return d3e.data(data, function (d) {
                 return d.id;
             });
-        }
-
-        var node__text_x = function(d) {
-            return node_text_dx + node__radius(d) + (urlValid(d.url) ? node_url_dx : 0);
-        }
-
-        function model_id_from_dom_id(dom_id) {
-            return dom_id.split('__')[0];
         }
 
         function node_text_setup() {
@@ -521,7 +519,7 @@ function GraphView(spec) {
             if (!selection.link_related(d)) {
                 set_link_label_text(d.id, link_text__short(d));
             }
-        }
+        };
         gv.link__hover__start = link__hover__start;
 
         var link__hover__end = function (d) {
@@ -532,7 +530,7 @@ function GraphView(spec) {
             if (!selection.link_related(d)) {
                 set_link_label_text(d.id, "");
             }
-        }
+        };
         gv.link__hover__end = link__hover__end;
 
         var link_on_hover = function (d) {
@@ -541,19 +539,19 @@ function GraphView(spec) {
             }, function (e) {
                 link__hover__end(d);
             });
-        }
+        };
 
         gv.node__hover__start = function (d) {
             var e = document.getElementById(d.id);
 
             add_class(e, 'hovering');
-        }
+        };
 
         gv.node__hover__end = function (d) {
             var e = document.getElementById(d.id);
 
             remove_class(e, 'hovering');
-        }
+        };
 
         relayout = (relayout === undefined && true) || relayout;
 
@@ -584,7 +582,7 @@ function GraphView(spec) {
             .attr('id', function(d){ return text_link_id(d.id); }) // append link id to enable data->visual mapping
             .attr("text-anchor", "middle")
             .attr("class", "linklabel graph")
-            .on("click", function(d, i) {
+            .on("click", function(d) {
                 if (!temporary) { // FIXME: if temporary don't even put a click handler
                     svgInput.enable(this, d);
                 }
@@ -615,7 +613,7 @@ function GraphView(spec) {
         link_g.each(function (d) {
                 link_on_hover(d);
             });
-        link_g.on("click", function(d, i) {
+        link_g.on("click", function(d) {
                 if (zoomInProgress) {
                     // don't disable zoomInProgress, it will be disabled by the svg_click_handler
                     // after this events bubbles to the svg element
@@ -627,8 +625,8 @@ function GraphView(spec) {
 
         //var selected_N = selection:
 
-        link.attr("class", function(d, i){
-                var temp_and = (d.name && d.name.replace(/ /g,"")=="and" && temporary) ? "temp_and" : "";
+        link.attr("class", function(d){
+                var temp_and = (d.name && d.name.replace(/ /g,"") === "and" && temporary) ? "temp_and" : "";
 
                 return ["graph link", temp_and, selection.class__link(d, temporary)].join(' ');
             });
@@ -694,53 +692,7 @@ function GraphView(spec) {
                 d.height = 900;
             });
 
-        // reorder nodes so selected are last, and so rendered last, and so on top.
-        // FIXME: with b-ubble removed this is probably broken. actually also before. links are not correctly ordered.
-        (function () {
-            var ontop = [];
-
-            node.each(function (d) {
-                    this.node = d;
-                    if (selection.node_selected(d)) {
-                        ontop.push(this);
-                    }
-                });
-            function reparent(new_parent, element) {
-                if (element.parentNode == new_parent) {
-                    return;
-                }
-                new_parent.appendChild(element);
-            }
-            // move link to correct group
-            // O(|links|*|ontop|)
-            link.each(function (d) {
-                if (ontop.some(function (node) {
-                        var d_node = node.node;
-                        return d.__src == d_node || d.__dst == d_node;
-                    }))
-                {
-                    reparent(selected_link_group, this);
-                } else {
-                    reparent(unselected_link_group, this);
-                }
-            });
-            link_text.each(function (d) {
-                if (selection.link_related(d)) {
-                    ontop.push(this);
-                }
-            });
-            function moveToEnd(e) {
-                e.parentNode.appendChild(e);
-            }
-            ontop.reverse().forEach(function (e) {
-                moveToEnd(e);
-            });
-            var count_links = function() {
-                return selected_link_group.childElementCount + unselected_link_group.childElementCount;
-            };
-        }); //();
-
-        function load_image(element, image_url, set_href) {
+        function load_image(element, image_url) {
             var image = new Image();
 
             image.onload = function () {
@@ -750,7 +702,7 @@ function GraphView(spec) {
                 element.setAttribute("width", width);
                 element.setAttribute("height", Math.min(width * aspect, this.height));
                 element.setAttributeNS("http://www.w3.org/1999/xlink", "href", this.src);
-            }
+            };
             image.src = image_url;
         }
 
@@ -773,7 +725,7 @@ function GraphView(spec) {
                 load_image(this, "/static/img/url-icon.png");
             });
 
-        function node__click_handler(d, i) {
+        function node__click_handler(d, _i) {
             if (d3.event.defaultPrevented) {
                 // drag happened, ignore click https://github.com/mbostock/d3/wiki/Drag-Behavior#on
                 return;
@@ -785,21 +737,6 @@ function GraphView(spec) {
             }
         }
 
-        function node__radius (d) {
-            return urlValid(d['image-url']) ? 20 : 10;
-        }
-        function filter_id(id) {
-            return id + '__node_filter';
-        }
-        function feimage_id(id) {
-            return id + '__node_filter_feimage';
-        }
-        function clip_path_id(id) {
-            return id + '__node_clip_path';
-        }
-        function svg_url(id) {
-            return 'url(#' + id + ')';
-        }
         var filter_group = d3.select('.nodefilter-group').selectAll(".nodefilter")
             .data(visible_nodes, function (d) { return d.id; });
         var filter = filter_group.enter()
@@ -856,13 +793,10 @@ function GraphView(spec) {
                 switch (d.status) {
                     case "done":
                         return "static/img/check.png";
-                        break;
                     case "current":
                         return "static/img/wait.png";
-                        break;
                     case "waiting":
                         return "static/img/cross.png";
-                        break;
                 }
             });
 
@@ -874,19 +808,14 @@ function GraphView(spec) {
             }
 
             if (relayout) {
-                layout__reset(0.1);
+                layout__reset(0.01);
             } else {
-                // XXX If we are stopped we need to update the text of the links at least,
-                // and this is the simplest way
-                tick();
+                layout.start().alpha(0.0001);
+                tick(); // this will be called before the end event is triggered by layout completing.
             }
         } else {
             start_layout_animation();
         }
-    }
-
-    function layout__load_graph() {
-        layout.nodes_links(nodes__visible(), links__visible());
     }
 
     function segment_in_segment(inner_low, inner_high, outer_low, outer_high)
@@ -977,7 +906,7 @@ function GraphView(spec) {
         zoom_obj.translate([translate[0], translate[1]]);
         zoom_obj.scale(scale);
         zoom_obj.event(zoom_obj_element.transition().duration(duration));
-    }
+    };
     gv.__set_scale_translate = set_scale_translate;
 
     var scale__absolute = function (new_scale) {
@@ -988,7 +917,7 @@ function GraphView(spec) {
             h = window.innerHeight;
 
         set_scale_translate(new_scale, [t[0] - ds * w / 2, t[1] - ds * h / 2], 200);
-    }
+    };
 
     gv.scale__absolute = scale__absolute;
 
@@ -1034,21 +963,12 @@ function GraphView(spec) {
         on_interval();
     }
 
-    var debug_print = function(message) {
-        var element = $(".debug");
-        if (element.length == 1) {
-            element.html(message);
-        } else {
-            console.log(message);
-        }
-    }
-
     function check_for_nan(x) {
-        if (Number.isNaN(x)) {
+        if (isNaN(x)) {
             console.log('nan problem');
             layout.stop();
         }
-        return Number.isNaN(x);
+        return isNaN(x);
     }
 
     var newnodes=1;
@@ -1122,7 +1042,7 @@ function GraphView(spec) {
      * [bubble_radius * 2, inf] => identify
      */
     function bubble_transform(d, bubble_radius) {
-        if (bubble_radius == 0) {
+        if (bubble_radius === 0) {
             return d;
         }
         var zoom_center_point = graph_to_screen(cx, cy, zoom_obj),
@@ -1244,7 +1164,7 @@ function GraphView(spec) {
         // tabindex affects focus change on tab key.
         // Sort top to bottom left to right
         node.sort(function (a, b) {
-                return b.py == a.py ? (b.px == a.px ? 0 : (b.px > a.px ? -1 : 1)) : (b.py > a.py ? -1 : 1);
+                return b.py === a.py ? (b.px === a.px ? 0 : (b.px > a.px ? -1 : 1)) : (b.py > a.py ? -1 : 1);
             })
             .attr('tabindex', function(d, i) { return i + 100; });
     }
@@ -1272,48 +1192,11 @@ function GraphView(spec) {
         spec.parent_graph_zoom_obj.on('zoom', function () {
             existing_zoom_cb.apply(null, arguments);
             pushRedraw(null);
-        })
-    }
-
-    var local_storage_key__positions = "positions";
-
-    function record_position_to_local_storage() {
-        localStorage.setItem(local_storage_key__positions,
-            JSON.stringify(_.object(graph.nodes().map(
-                function (n) {
-                    return [n.id, {x: n.x, y: n.y}];
-                }))));
-    }
-
-    function restore_position_from_local_storage() {
-        var positions,
-            nodes,
-            success = 0;
-        try {
-            positions = JSON.parse(localStorage.getItem(local_storage_key__positions));
-        } catch (e) {
-            localStorage.removeItem(local_storage_key__positions);
-            return;
-        }
-
-        if (null === positions) {
-            return;
-        }
-        nodes = graph.nodes();
-        nodes.forEach(function (n) {
-            var n_pos = positions[n.id];
-
-            if (n_pos !== undefined) {
-                n.x = n_pos.x;
-                n.y = n_pos.y;
-                success += 1;
-            }
         });
-        if (success > 0) {
-            layout__load_graph();
-        }
-        console.log('restored ' + success + ' / ' + _.keys(positions).length + ' positions to ' +
-                    nodes.length + ' nodes');
+    }
+
+    function record_position_to_database() {
+        graph.nodes__store_layout_positions(layout.name);
     }
 
     var layouts = view_layouts.layouts.map(function (layout_data) {
@@ -1354,10 +1237,14 @@ function GraphView(spec) {
     }
 
     function layout__reset(alpha) {
-        alpha = alpha | 0.1;
+        alpha = alpha || 0.01;
         layout.nodes_links(nodes__visible(), links__visible())
               .alpha(alpha)
               .start();
+    }
+
+    function layout__load_graph() {
+        layout.nodes_links(nodes__visible(), links__visible());
     }
 
     function set_layout(new_layout) {
@@ -1369,14 +1256,16 @@ function GraphView(spec) {
         graph.nodes().forEach(function (node) {
             node.fixed = undefined;
         });
-        layout = new_layout
+        layout = new_layout;
+        layout
             .size([w, h])
             .on("tick", layout__tick__callback)
-            .on("end", record_position_to_local_storage)
+            .on("end", record_position_to_database)
             .nodes_links(nodes__visible(), links__visible())
             .restore()
             .zen_mode(zen_mode)
-            .start();
+            .start()
+            .alpha(0.01);
         gv.layout = layout;
     }
 
@@ -1385,7 +1274,7 @@ function GraphView(spec) {
         set_layout_toolbar(layout_menu);
         gv.hide_layout_menu = function () {
             layout_menu.find('.btn_layout').remove();
-        }
+        };
     }
 
     gv.dev_set_layout = function (layout_func) {
@@ -1423,10 +1312,11 @@ function GraphView(spec) {
     gv.zen_mode__set = zen_mode__set;
     gv.zen_mode__toggle = function () {
         zen_mode__set(!zen_mode);
-    }
+    };
     gv.zen_mode__cancel = function () {
         zen_mode__set(false);
-    }
+    };
+    gv.layouts = layouts;
     return gv;
 }
 

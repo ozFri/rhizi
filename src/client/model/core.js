@@ -1,4 +1,24 @@
-"use strict"
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+"use strict";
+
+var DEBUG_NODE_POSITION = false;
 
 /**
  * core model module - currently unused
@@ -12,7 +32,7 @@ define(['util'], function(util) {
 
     var random_id__hash = function() {
         return Math.random().toString(36).substring(2, 10);
-    }
+    };
 
     var random_id__seq = function () {
         var id = 0;
@@ -22,26 +42,44 @@ define(['util'], function(util) {
             return next;
         }
         return get_next;
-    }
+    };
 
     function random_node_name() {
         return random_id__hash();
     }
 
     function init(config){
-        if (config['rand_id_generator'] == 'hash') {
+        if (config.rand_id_generator === 'hash') {
             random_id = random_id__hash;
         }
-        if (config['rand_id_generator'] == 'seq') {
+        if (config.rand_id_generator === 'seq') {
             random_id = random_id__seq();
         }
     }
 
-    function Node() {
+    function NodePlain() {
+    }
+    function NodeWithNaNXTest() {
+        Object.defineProperty(this, "x", {
+            set: function (new_x) {
+                if (isNaN(new_x) && !isNaN(this._x)) {
+                    console.log('Node ' + this.id + '.x changed to Nan from ' + this._x);
+                }
+                this._x = new_x;
+            },
+            get: function () {
+                return this._x;
+            }
+        });
+    }
+    if (DEBUG_NODE_POSITION) {
+        Node = NodeWithNaNXTest;
+    } else {
+        Node = NodePlain;
     }
     Node.prototype.equals = function(other_node){
-        return this.id == other_node.id;
-    }
+        return this.id === other_node.id;
+    };
 
     function Link() {
     }
@@ -59,17 +97,17 @@ define(['util'], function(util) {
      */
     function create_node_from_spec(node_spec) {
 
-        util.assert(undefined != node_spec.name, 'create_node_from_spec: name missing');
+        util.assert(undefined !== node_spec.name, 'create_node_from_spec: name missing');
 
         var ret = new Node();
 
-        if (undefined != node_spec.id) {
+        if (undefined !== node_spec.id) {
             // reuse id if present
             __set_obj_id(ret, node_spec.id);
         }
 
         // type
-        if (undefined == node_spec.type) {
+        if (undefined === node_spec.type) {
             console.debug('create_node_from_spec: undefined type, falling back to \'perm\'');
             node_spec.type = 'perm';
         }
@@ -130,7 +168,7 @@ define(['util'], function(util) {
             console.debug(this.id + ' != ' + other.id);
         }
         return ret;
-    }
+    };
 
     function create_link_from_spec(src, dst, link_spec) {
         var ret = new Link();
@@ -168,7 +206,7 @@ define(['util'], function(util) {
      */
     Link.prototype.equal_by_id = function(other) {
         return this.id.toLowerCase() == other.id.toLowerCase();
-    }
+    };
 
     return {
         init : init,

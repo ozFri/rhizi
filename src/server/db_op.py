@@ -1,8 +1,26 @@
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+
 from copy import deepcopy
-import gzip
 import hashlib
 import logging
 import re
+
+from flask import current_app # for user_db
 
 from model.graph import Attr_Diff
 from model.graph import Topo_Diff
@@ -16,6 +34,17 @@ import neo4j_util as db_util
 
 
 log = logging.getLogger('rhizi')
+
+class DBO_factory__default(object):
+    """
+    Default configuration DB op factory, providing the following function:
+       - gen_op__rzdb__init_DB(): DB init op
+    """
+
+    def gen_op__rzdb__init_DB(self):
+        return DBO_rzdb__init_DB(neo4j_schema.RZDOC__DEFAULT_MAINPAGE_NAME,
+                                 neo4j_schema.RZDOC__NAME__MAX_LENGTH)
+
 
 class DB_op(object):
     """
@@ -138,11 +167,11 @@ class DBO_add_link_set(DB_op):
 
 class DB_composed_op(DB_op):
     """
-    A DB_op composed of sup-operations with the intention of being able to 
-    partially succeed in sub-op execution. This op class will reject addition 
+    A DB_op composed of sup-operations with the intention of being able to
+    partially succeed in sub-op execution. This op class will reject addition
     of direct query statements.
-    
-    Note: this class may be removed in future releases. 
+
+    Note: this class may be removed in future releases.
     """
     def __init__(self):
         super(DB_composed_op, self).__init__()
@@ -245,7 +274,9 @@ class DBO_block_chain__commit(DB_op):
             self.add_statement(self._add_statement__authored_by(ctx.user_name))
 
         if None != meta and 'sentence' in meta and meta['sentence'] != '':
-            self.add_statement(self._add_statement__result_of_sentence(ctx.user_name, meta['sentence']))
+            result_of_param_set = {'result_of_attr': {'sentence': meta['sentence']}}
+            self.add_statement(self._add_statement__result_of_sentence(ctx.user_name),
+                               result_of_param_set)
 
     def _add_statement__authored_by(self, user_name):
         return ['merge (n:%s {user_name: \'%s\'})' % (neo4j_schema.META_LABEL__USER, user_name),
@@ -254,13 +285,12 @@ class DBO_block_chain__commit(DB_op):
                 'create (m)-[r:`%s`]->(n)' % (neo4j_schema.META_LABEL__VC_COMMIT_AUTHOR),
                 ]
 
-    def _add_statement__result_of_sentence(self, user_name, sentence):
+    def _add_statement__result_of_sentence(self, user_name):
         return ['match (head:%s:%s)' % (neo4j_schema.META_LABEL__VC_HEAD,
                                         neo4j_schema.META_LABEL__VC_COMMIT),
-                'create (head)-[r:%s]->(result_of:%s {sentence: \'%s\'} )' % (
+                'create (head)-[r:%s]->(result_of:%s {result_of_attr} )' % (
                 neo4j_schema.META_LABEL__VC_COMMIT_RESULT_OF,
                 neo4j_schema.META_LABEL__VC_OPERATION,
-                sentence,
                 )]
 
     def process_result_set(self):
@@ -326,7 +356,7 @@ class DBO_block_chain__init(DB_op):
 class DBO_block_chain__list(DB_op):
     """
     Return block chain hash list
-    
+
     @return: hash list where last list item corresponds to earliest commit
     """
 
@@ -708,7 +738,7 @@ class DBO_rm_link_set(DB_op):
         """
         remove link set
 
-        [!] when removing as a result of node removal, use DBO_rm_node_set 
+        [!] when removing as a result of node removal, use DBO_rm_node_set
         along with rm_links=True
         """
         assert len(id_set) > 0, __name__ + ': empty id set'
@@ -752,15 +782,19 @@ class DBO_rzdb__init_DB(DB_composed_op):
 
     class _init_DB_subop(DB_op):
 
-        def __init__(self):
+        def __init__(self, cfg):
             super(DBO_rzdb__init_DB. _init_DB_subop, self).__init__()
 
             # init DB metadata node
             q_arr = ['create (n:%s {db_attr})' % (neo4j_schema.META_LABEL__RZDB_META)]
-            q_params = {'db_attr': {'schema_version': neo4j_schema.NEO4J_SCHEMA_VERSION}}
+            q_params = {'db_attr': {'schema_version': neo4j_schema.NEO4J_SCHEMA_VERSION,
+                                    'rzdoc__name__max_length': cfg['rzdoc__name__max_length']
+                                   }
+                       }
             self.add_statement(q_arr, q_params)
 
-    def __init__(self, rzdoc__mainpage_name):
+    def __init__(self, rzdoc__mainpage_name,
+                       rzdoc__name__max_length=neo4j_schema.RZDOC__NAME__MAX_LENGTH):
         """
         Fetch DB metadata
         """
@@ -770,7 +804,8 @@ class DBO_rzdb__init_DB(DB_composed_op):
         self.add_sub_op(DBO_rzdb__fetch_DB_metablock())
 
         # init DB metadata node
-        self.add_sub_op(DBO_rzdb__init_DB._init_DB_subop())
+        cfg = {'rzdoc__name__max_length': rzdoc__name__max_length}
+        self.add_sub_op(DBO_rzdb__init_DB._init_DB_subop(cfg))
 
         # create mainpage
         mainpage_rzdoc = RZDoc(rzdoc__mainpage_name)
@@ -812,20 +847,30 @@ class DBO_rzdoc__commit_log(DB_op):
         db_q = DB_Query(q_arr)
         self.add_db_query(db_q)
 
+    def _lookup_user_name(self, email):
+        ret = 'Anonymous'
+        if email is not None:
+            try:
+                user = current_app.user_db.lookup_user__by_email_address(email)
+                ret = user[1].rz_username
+            except:
+                pass
+        return ret
+
     def process_result_set(self):
         ret = []
         # break out the blobs, return them - binary all the way home
         for _, _, r_set in self.iter__r_set():
             for row in r_set:
                 pairs = row.items()[0]  # see query return statement
-                for commit, operation, user in pairs:
+                for commit, operation, user_node_attrs in pairs:
                     if commit['blob'] == '':
                         # root commit, done
                         break
-                    # TODO: get author
                     diff = RZCommit.diff_obj_from_blob(commit['blob'])
+                    user_name = self._lookup_user_name(user_node_attrs['user_name'] if user_node_attrs else None)
                     diff['meta'] = dict(ts_created=commit['ts_created'],
-                                        author='Anonymous' if user is None else user['user_name'],
+                                        author=user_name,
                                         commit=commit['hash'],
                                         )
                     if None is not operation and 'sentence' in operation:
@@ -1036,16 +1081,25 @@ class DBO_rzdoc__delete(DB_op):
         db_q = DB_Query(q_arr)
         self.add_db_query(db_q)
 
-class DBO_rzdoc__list(DB_op):
+class DBO_rzdoc__search(DB_op):
 
-    def __init__(self):
+    def __init__(self, search_query, rzdoc__name__max_length=neo4j_schema.RZDOC__NAME__MAX_LENGTH):
         """
-        list available rhizi docs (common to all users)
+        Search rhizi docs by name:
+           - search is case insensitive
+           - any substring occurrence is considered a match
         """
-        super(DBO_rzdoc__list, self).__init__()
+        super(DBO_rzdoc__search, self).__init__()
         q_arr = ['match (n:%s)' % (neo4j_schema.META_LABEL__RZDOC_TYPE),
                  'return n']
-        db_q = DB_Query(q_arr)
+        param_set = {}
+
+        if search_query is not None and len(search_query) > 0:
+            lim_x_fix = rzdoc__name__max_length - len(search_query)  # pre/post prefix limit
+            q_arr.insert(1, 'where n.name =~ {search_query_regx}')
+            param_set = {'search_query_regx': '(?i).{0,%s}%s.{0,%s}' % (lim_x_fix, search_query, lim_x_fix)}
+
+        db_q = DB_Query(q_arr, param_set)
         self.add_db_query(db_q)
 
 class DBO_aifnode__lookup_by_name(DB_op):

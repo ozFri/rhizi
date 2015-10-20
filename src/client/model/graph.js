@@ -1,4 +1,22 @@
-"use strict"
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+"use strict";
 
 define(['underscore', 'Bacon', 'consts', 'util', 'model/core', 'model/util', 'model/diff', 'rz_api_backend', 'rz_api_mesh', 'history', 'model/types'],
 function (_,           Bacon,           consts,   util,   model_core,   model_util,   model_diff,   rz_api_backend,   rz_api_mesh,   history,   model_types) {
@@ -43,13 +61,13 @@ function Graph(spec) {
         for (var link_key in id_to_link_map) {
             f(id_to_link_map[link_key]);
         }
-    }
+    };
 
     var nodes_forEach = function (f) {
         for (var node_key in id_to_node_map) {
             f(id_to_node_map[node_key]);
         }
-    }
+    };
 
     function key_count(obj) {
         return _.keys(obj).length;
@@ -57,7 +75,7 @@ function Graph(spec) {
 
     var degree = function (node) {
         return key_count(id_to_link_id_set[node.id]);
-    }
+    };
     this.degree = degree;
 
     /**
@@ -65,12 +83,11 @@ function Graph(spec) {
      *
      * @return node if node was actually added
      */
-    // FIXME: is this a good idea? i.e. changing API based on constructor? just in dynamic city
-    if (temporary) {
-        this.addTempNode = function(spec) {
+    this.addTempNode = function(spec) {
+	    if (temporary) {
             return this.__addNode(spec);
         }
-    }
+    };
 
     var nodes_to_touched_links = function (node_id_set) {
         var touched_links = [];
@@ -83,10 +100,9 @@ function Graph(spec) {
                 }
             });
         });
-        console.dir(touched_links);
 
         return touched_links.map(function(l){ return l.id; });
-    }
+    };
 
     /**
      *
@@ -135,7 +151,7 @@ function Graph(spec) {
         });
 
         rz_api_backend.commit_diff__topo(topo_diff, __commit_diff_ajax__topo);
-    }
+    };
     this.commit_and_tx_diff__topo = commit_and_tx_diff__topo;
 
     /**
@@ -148,7 +164,7 @@ function Graph(spec) {
             node;
 
         if (undefined == spec.id) {
-            existing_node = find_node__by_name(spec.name)
+            existing_node = find_node__by_name(spec.name);
             if (existing_node){
                 return existing_node;
             } else {
@@ -182,14 +198,14 @@ function Graph(spec) {
         delete id_to_node_map[node_id];
         delete id_to_link_id_set[node_id];
         invalidate_nodes = true;
-    }
+    };
 
     var _node_add_helper = function (node) {
         util.assert(node.id, "missing node id");
         id_to_node_map[node.id] = node;
         id_to_link_id_set[node.id] = [];
         invalidate_nodes = true;
-    }
+    };
 
     var _link_remove_helper = function (link_id) {
         var link = id_to_link_map[link_id],
@@ -203,11 +219,12 @@ function Graph(spec) {
         delete id_to_link_map[link_id];
         util.assert(id_to_link_map[link_id] === undefined, "delete failed?!");
         invalidate_links = true;
-    }
+    };
 
     var _link_add_helper = function (link) {
         var src_id = link.__src.id,
             dst_id = link.__dst.id;
+
         util.assert(link.id, "missing link id");
         id_to_link_map[link.id] = link;
         // link's nodes may not belong to this graph, check first - we add them if required to the id_to_link_id_set only
@@ -220,7 +237,8 @@ function Graph(spec) {
         id_to_link_id_set[src_id][dst_id] = 1;
         id_to_link_id_set[dst_id][src_id] = 1;
         invalidate_links = true;
-    }
+        return link;
+    };
 
     var _remove_node_set = function(node_id_set) {
         node_id_set.forEach(function (id) {
@@ -231,7 +249,7 @@ function Graph(spec) {
             _node_remove_helper(id);
             console.log('_remove_node_set: ' + id);
         });
-    }
+    };
     this._remove_node_set = _remove_node_set;
 
     function calc_neighbours() {
@@ -406,7 +424,7 @@ function Graph(spec) {
 
         if (start === undefined) {
             console.log('neighbourhood: bug: called with undefined node');
-            return;
+            return ret;
         }
         if (d > 1) {
             console.log('neighbourhood: bug: not implemented for d == ' + d);
@@ -471,7 +489,7 @@ function Graph(spec) {
             });
         });
         return ret;
-    }
+    };
 
     /* compareSubset:
      *  state: one of the optional states that defines a subgraph
@@ -541,7 +559,7 @@ function Graph(spec) {
             }
         }
         return {graph_same: true, old_name: changed_nodes.a_b, new_name: changed_nodes.b_a};
-    }
+    };
 
     function __addLink(link) {
 
@@ -557,17 +575,18 @@ function Graph(spec) {
         var existing_link = findLink(link.__src.id, link.__dst.id, link.name);
 
         if (undefined == existing_link) {
-            _link_add_helper(link);
+            existing_link = _link_add_helper(link);
         } else {
             existing_link.name = link.name;
             existing_link.state = link.state;
         }
+        return existing_link;
     }
     // FIXME: good idea to add API based on constructor parameter?
     if (temporary) {
         this.addTempLink = function (link) {
             return __addLink(link);
-        }
+        };
     }
 
     this.update_link = function(link, new_link_spec, on_success, on_error) {
@@ -582,17 +601,18 @@ function Graph(spec) {
         }
 
         var on_ajax_success = function(attr_diff_spec) {
-            var attr_diff = model_util.adapt_format_read_diff__attr(attr_diff_spec);
-            var id_to_link_map = attr_diff.id_to_link_map
-            var l_id = link.id; // original node id
+            var attr_diff = model_util.adapt_format_read_diff__attr(attr_diff_spec),
+		id_to_link_map = attr_diff.id_to_link_map,
+		key,
+		l_id = link.id; // original node id
 
             util.assert(id_to_link_map && id_to_link_map[l_id], "bad return value from ajax");
 
             var ret_link = id_to_link_map[l_id];
-            for (var key in ret_link['__attr_write']){
+            for (key in ret_link['__attr_write']){
                 link[key] = ret_link['__attr_write'][key];
             }
-            for (var key in ret_link['__attr_remove']){
+            for (key in ret_link['__attr_remove']){
                 delete link[key];
             }
 
@@ -608,28 +628,113 @@ function Graph(spec) {
         };
 
         rz_api_backend.commit_diff__attr(attr_diff, on_ajax_success, on_ajax_error);
+    };
+
+    function layout_x_key(layout_name) {
+        return 'layouts_' + layout_name + '_x';
+    }
+    this.layout_x_key = layout_x_key;
+
+    function layout_y_key(layout_name) {
+        return 'layouts_' + layout_name + '_y';
+    }
+    this.layout_y_key = layout_y_key;
+
+    function layout_fixed_key(layout_name) {
+        return 'layouts_' + layout_name + '_fixed';
+    }
+    this.layout_fixed_key = layout_fixed_key;
+
+    function close_to(a, b, eps) {
+        return Math.abs(a - b) < eps;
+    }
+
+    var eps = 0.001;
+
+    /**
+     * Do an attribute commit with x, y for the current layout
+     */
+    this.nodes__store_layout_positions = function(layout_name, node_ids) {
+        // TODO: fix when attribute diff supports nested keys to use:
+        // layout.<layout_name>.{x,y}
+        var x_key = layout_x_key(layout_name),
+            y_key = layout_y_key(layout_name),
+            fixed_key = layout_fixed_key(layout_name),
+            changes = 0;
+
+        if (node_ids && node_ids.forEach) {
+            node_ids = node_ids.filter(function (node_id) {
+                return id_to_node_map[node_id] !== undefined;
+            });
+        } else {
+            node_ids = _.keys(id_to_node_map);
+        }
+
+        // commit x, y to layout
+        node_ids.forEach(function (node_id) {
+            var node = id_to_node_map[node_id],
+                db_x = node[x_key],
+                db_y = node[y_key],
+                x = node.x,
+                y = node.y;
+
+            if (close_to(db_x, x, eps) && close_to(db_y, y, eps)) {
+                return;
+            }
+            node[x_key] = node.x;
+            node[y_key] = node.y;
+            changes += 1;
+        });
+        if (changes === 0) {
+            return;
+        }
+        console.log('sending ' + changes + ' nodes position for layout ' + layout_name);
+        // commit all current nodes
+        nodes__commit_attributes(node_ids, function (node) {
+            var d = {};
+
+            d[x_key] = node.x;
+            d[y_key] = node.y;
+            d[fixed_key] = node.fixed;
+            return d;
+        });
+    };
+
+    function nodes__commit_attributes(node_ids, getter) {
+        var attr_diff = model_diff.new_attr_diff();
+        node_ids.forEach(function (node_id) {
+            var node = id_to_node_map[node_id],
+                d = getter(node);
+            _.keys(d).forEach(function (k) {
+                attr_diff.add_node_attr_write(node.id, k, d[k]);
+            });
+        });
+        var on_ajax_success = function() {
+        };
+        var on_ajax_error = function(){
+            console.log('error with commit nodes properties to server');
+        };
+        rz_api_backend.commit_diff__attr(attr_diff, on_ajax_success, on_ajax_error);
     }
 
     this.update_node = function(node, new_node_spec) {
         util.assert(node instanceof model_core.Node);
 
         // TODO - fake api for client only (debug, demo, ui work)
-        if (!rz_config.backend_enabled) return;
+        if (!rz_config.backend_enabled) { return; }
 
-        if (new_node_spec.name !== undefined && node.name != new_node_spec.name){
+        if (new_node_spec.name !== undefined && node.name !== new_node_spec.name){
             /*
              * handle name update collision: suggest removal first
              */
             var n_eq_name = find_node__by_name(new_node_spec.name);
             if (null !== n_eq_name && n_eq_name !== node) {
                 if (window.confirm('really merge ' + node.name + ' into ' + n_eq_name.name + '?')) {
-                    return nodes__merge([n_eq_name.id, node.id]);
-                } else {
-                    return; // do nothing
+                    nodes__merge([n_eq_name.id, node.id]);
                 }
             }
 
-            node['name'] = new_node_spec['name']; // [!] may still fail due to server NAK
+            node.name = new_node_spec.name; // [!] may still fail due to server NAK
         }
 
         var attr_diff = model_diff.new_attr_diff();
@@ -638,17 +743,18 @@ function Graph(spec) {
         }
 
         var on_ajax_success = function(attr_diff_spec){
-            var attr_diff = model_util.adapt_format_read_diff__attr(attr_diff_spec);
-            var id_to_node_map = attr_diff.id_to_node_map
-            var n_id = node.id; // original node id
+            var attr_diff = model_util.adapt_format_read_diff__attr(attr_diff_spec),
+                    id_to_node_map = attr_diff.id_to_node_map,
+                    key,
+                    n_id = node.id; // original node id
 
             util.assert(id_to_node_map && id_to_node_map[n_id], "bad return value from ajax");
 
             var ret_node = id_to_node_map[n_id];
-            for (var key in ret_node['__attr_write']){
-                node[key] = ret_node['__attr_write'][key];
+            for (key in ret_node.__attr_write){
+                node[key] = ret_node.__attr_write[key];
             }
-            for (var key in ret_node['__attr_remove']){
+            for (key in ret_node.__attr_remove){
                 delete node[key];
             }
 
@@ -659,7 +765,7 @@ function Graph(spec) {
             console.log('error with commit to server: danger robinson!');
         };
         rz_api_backend.commit_diff__attr(attr_diff, on_ajax_success, on_ajax_error);
-    }
+    };
     var update_node = this.update_node;
 
     this.editNameByName = function(old_name, new_name) {
@@ -669,8 +775,8 @@ function Graph(spec) {
             console.log('editNameByName: error: cannot find node with name ' + old_name);
             return;
         }
-        return this.editName(node.id, new_name);
-    }
+        this.editName(node.id, new_name);
+    };
 
     this.editName = function(id, new_name) {
         var n_eq_name = find_node__by_name(new_name);
@@ -687,7 +793,7 @@ function Graph(spec) {
         util.assert(n_eq_name === undefined);
 
         n_eq_id.name = new_name;
-    }
+    };
 
     /**
      * editType:
@@ -696,7 +802,7 @@ function Graph(spec) {
      */
     this.editType = function(id, newtype) {
         return this._editProperty(id, 'type', newtype);
-    }
+    };
 
     function new_attr_diff_prop_value(id, prop, value)
     {
@@ -730,17 +836,17 @@ function Graph(spec) {
             update_node(n, props);
         }
         return true;
-    }
+    };
 
     this.links__delete = function(link_ids) {
         var topo_diff = model_diff.new_topo_diff({link_id_set_rm: link_ids});
         this.commit_and_tx_diff__topo(topo_diff);
-    }
+    };
 
     this.nodes__delete = function(node_ids) {
         var topo_diff = model_diff.new_topo_diff({node_id_set_rm: node_ids});
         this.commit_and_tx_diff__topo(topo_diff);
-    }
+    };
 
     /**
      * links the first node in the list to the rest of the list.
@@ -769,14 +875,14 @@ function Graph(spec) {
                 .filter(function (src_link) { return src_link.__dst.id !== merge_node_id; })
                 .map(function (src_link) {
                 return model_core.create_link__set_random_id(merge_node, src_link.__dst, {
-                    name: src_link.name,
+                    name: src_link.name
                 });
             });
             var dst_links = find_link__by_dst_id(node_id)
                 .filter(function (dst_link) { return dst_link.__src.id !== merge_node_id; })
                 .map(function (dst_link) {
                 return model_core.create_link__set_random_id(dst_link.__src, merge_node, {
-                    name: dst_link.name,
+                    name: dst_link.name
                 });
             });
             return _.union(src_links, dst_links);
@@ -798,18 +904,18 @@ function Graph(spec) {
             _link_remove_helper(id);
             console.log('_remove_link_set: ' + id);
         });
-    }
+    };
     this._remove_link_set = _remove_link_set;
 
     this.nodes_rm = function(state) {
         var node_ids = get_nodes().filter(function (n) { return n.state == state; })
                                  .map(function (n) { return n.id; }),
             topo_diff = model_diff.new_topo_diff({
-                node_id_set_rm : node_ids,
+                node_id_set_rm : node_ids
             });
 
         this.commit_and_tx_diff__topo(topo_diff);
-    }
+    };
 
     var findLink = function(src_id, dst_id, name) {
         var link_key, link;
@@ -820,7 +926,8 @@ function Graph(spec) {
                 return link;
             }
         }
-    }
+	return undefined;
+    };
 
     var find_links__by_nodes = function(nodes) {
         var ids = util.set_from_array(_.pluck(nodes, "id"));
@@ -828,7 +935,7 @@ function Graph(spec) {
         return get_links().filter(function (link) {
             return ids[link.__src.id] && ids[link.__dst.id];
         });
-    }
+    };
     this.find_links__by_nodes = find_links__by_nodes;
 
     var find_links__by_state = function(state) {
@@ -839,7 +946,7 @@ function Graph(spec) {
             }
         });
         return foundLinks;
-    }
+    };
 
     var compareNames = function(name1, name2) {
         return name1.toLowerCase() === name2.toLowerCase();
@@ -849,7 +956,7 @@ function Graph(spec) {
         return get_nodes().filter(function (n) {
             return compareNames(n.name, name) && (undefined === state || n.state === state);
         }).length > 0;
-    }
+    };
     this.hasNodeByName = hasNodeByName;
 
     /**
@@ -865,12 +972,12 @@ function Graph(spec) {
             }
         }
         return id_to_node_map[id] || null;
-    }
+    };
     this.find_node__by_id = find_node__by_id;
 
     var find_nodes__by_id = function(ids, recursive) {
         return _.map(ids, function (id) { return find_node__by_id(id, recursive); });
-    }
+    };
     this.find_nodes__by_id = find_nodes__by_id;
 
     /**
@@ -878,13 +985,13 @@ function Graph(spec) {
      */
     var find_nodes__by_filter = function(filter) {
         var ret = [];
-        nodes.map(function(n){
+        _.values(id_to_node_map).map(function(n) {
            if (true == filter(n)){
                ret.push(n);
            }
         });
         return ret;
-    }
+    };
 
     /**
      * @param id unique id of link
@@ -900,7 +1007,7 @@ function Graph(spec) {
             }
         }
         return id_to_link_map[id] || null;
-    }
+    };
     this.find_link__by_id = find_link__by_id;
 
     /**
@@ -910,7 +1017,7 @@ function Graph(spec) {
      */
     var find_link__by_src_id = function(src_id) {
         return _.filter(get_links(), function (link) { return link.__src.id == src_id; });
-    }
+    };
     this.find_link__by_src_id = find_link__by_src_id;
 
     /**
@@ -920,7 +1027,7 @@ function Graph(spec) {
      */
     var find_link__by_dst_id = function(dst_id) {
         return _.filter(get_links(), function (link) { return link.__dst.id == dst_id; });
-    }
+    };
     this.find_link__by_dst_id = find_link__by_dst_id;
 
 
@@ -939,7 +1046,7 @@ function Graph(spec) {
             }
         }
         return null;
-    }
+    };
     this.find_node__by_name = find_node__by_name;
 
     var find_nodes__by_state = function(state) {
@@ -950,7 +1057,7 @@ function Graph(spec) {
             }
         });
         return foundNodes;
-    }
+    };
 
     function clear(push_diff) {
         push_diff = push_diff === undefined ? true : push_diff;
@@ -979,7 +1086,7 @@ function Graph(spec) {
         }
 
         rz_api_mesh.broadcast_possible_next_diff_block(diff_set);
-    }
+    };
 
     function on_backend__node_add(n_spec) {
         n_spec = model_util.adapt_format_read_node(n_spec);
@@ -1051,7 +1158,7 @@ function Graph(spec) {
 
     function _add_node_set(node_specs) {
         return node_specs.map(function (node_spec) {
-            __addNode(node_spec);
+            return __addNode(node_spec);
         });
     }
 
@@ -1066,7 +1173,7 @@ function Graph(spec) {
                         find_node__by_id(link_spec.__dst_id),
                 link = model_core.create_link_from_spec(src, dst, link_spec);
 
-            __addLink(link);
+            return __addLink(link);
         });
     }
 
@@ -1093,58 +1200,68 @@ function Graph(spec) {
      * This function should not trigger remote transmission of diff object
      */
     function commit_diff__attr(attr_diff) {
+        var total_count_d = 0,
+            total_count_w = 0,
+            count_n = 0;
+
         util.assert(model_diff.is_attr_diff(attr_diff), 'commit_diff__attr: argument type != Attr_Diff');
 
         // process nodes
         attr_diff.for_each_node(function(n_id, n_attr_diff) {
+            var attr_key,
+                node = id_to_node_map[n_id];
 
-            var node = id_to_node_map[n_id];
-            if (undefined == node) {
+            if (undefined === node) {
                 console.warn('commit_diff__attr: incoming attr diff for non-existing node, discarding');
                 return;
             }
 
             // apply attr writes: node
             var count_w = 0;
-            for (var attr_key in n_attr_diff['__attr_write']) {
-                var attr_value = n_attr_diff['__attr_write'][attr_key];
+            for (attr_key in n_attr_diff.__attr_write) {
+                var attr_value = n_attr_diff.__attr_write[attr_key];
                 node[attr_key] = attr_value; // write each new attr update
                 count_w = count_w + 1;
-            };
+            }
 
             // apply attr removals: node
             var count_d = 0;
-            for (var attr_key in n_attr_diff['__attr_remove']) {
+            for (attr_key in n_attr_diff.__attr_remove) {
                 delete node[attr_key];  // apply each attr removal
                 count_d = count_d + 1;
-            };
-
-            console.log('commit_diff__attr: n_id: \'' + n_id + '\', write-count: ' + count_w + ', rm-count: ' + count_d);
+            }
+            if (count_w > 0 || count_d > 0) {
+                count_n += 1;
+            }
+            total_count_w += count_w;
+            total_count_d += count_d;
         });
+        console.log('commit_diff__attr: nodes: ' + count_n + ', writes: ' + total_count_w + ', removals: ' + total_count_d);
 
         // process links
         attr_diff.for_each_link(function(l_id, n_attr_diff) {
+            var attr_key,
+                link = id_to_link_map[l_id];
 
-            var link = id_to_link_map[l_id];
-            if (undefined == link) {
+            if (undefined === link) {
                 console.warn('commit_diff__attr: incoming attr diff for non-existing link, discarding');
                 return;
             }
 
             // apply attr writes: link
             var count_w = 0;
-            for (var attr_key in n_attr_diff['__attr_write']) {
-                var attr_value = n_attr_diff['__attr_write'][attr_key];
+            for (attr_key in n_attr_diff.__attr_write) {
+                var attr_value = n_attr_diff.__attr_write[attr_key];
                 link[attr_key] = attr_value; // write each new attr update
                 count_w = count_w + 1;
-            };
+            }
 
             // apply attr removals: link
             var count_d = 0;
-            for (var attr_key in n_attr_diff['__attr_remove']) {
+            for (attr_key in n_attr_diff.__attr_remove) {
                 delete link[attr_key];  // apply each attr removal
                 count_d = count_d + 1;
-            };
+            }
 
             console.log('commit_diff__attr: l_id: \'' + l_id + '\', write-count: ' + count_w + ', rm-count: ' + count_d);
         });
@@ -1192,7 +1309,7 @@ function Graph(spec) {
                        name: ext_spec.name ? ext_spec.name : ext_spec.id,
                        type: ext_spec.type,
                        x: ext_spec.x,
-                       y: ext_spec.y,
+                       y: ext_spec.y
                     },
                     node;
 
@@ -1215,14 +1332,14 @@ function Graph(spec) {
                     dst = node_by_id[old_id_to_new_id[link_spec.__dst]],
                     link = model_core.create_link__set_random_id(src, dst, {
                         name: link_spec.name,
-                        state: 'perm', // FIXME: this is meaningless now with graph separation
+                        state: 'perm' // FIXME: this is meaningless now with graph separation
                     });
                 link.__src_id = src.id;
                 link.__dst_id = dst.id;
                 return link;
             });
         return diff;
-    }
+    };
     this.new_topo_diff__from_nodes_links = new_topo_diff__from_nodes_links;
 
     this.load_from_json = function(json) {
@@ -1234,7 +1351,7 @@ function Graph(spec) {
         }
         // FIXME: prompt for replace/merge; now defaulting to merge
         commit_and_tx_diff__topo(new_topo_diff__from_nodes_links(data.nodes, data.links));
-    }
+    };
 
     this.save_to_json = function() {
         var d = {"nodes":[], "links":[]},
@@ -1259,13 +1376,13 @@ function Graph(spec) {
             });
         }
         return JSON.stringify(d);
-    }
+    };
 
     this.set_user = function(user) {
         var elem = $('svg g.zoom')[0];
         this.user = user;
         this.history = new history.History(this.user, this, elem);
-    }
+    };
 
     function clear_history() {
         if (this.history !== undefined) {
@@ -1288,7 +1405,7 @@ function Graph(spec) {
 
     var get_node_ids = function() {
         return _.keys(id_to_node_map);
-    }
+    };
     this.get_node_ids = get_node_ids;
 
     var get_links = function() {
@@ -1309,14 +1426,10 @@ function Graph(spec) {
             selected_nodes,
             selected_links;
 
-        if (!node_visitor && !link_visitor) {
-            return;
-        }
-
         selected_nodes = node_visitor ? nodes.filter(node_visitor) : [];
         selected_links = link_visitor ? links.filter(link_visitor) : [];
         return {nodes: selected_nodes, links: selected_links};
-    }
+    };
 
     function markRelated(names) {
         removeRelated();
@@ -1343,7 +1456,7 @@ function Graph(spec) {
         filtered_types = new_filtered_types;
         invalidate_links = true;
         invalidate_nodes = true;
-    }
+    };
 }
 
 function is_node(item)
@@ -1359,7 +1472,7 @@ function is_link(item)
 return {
     Graph: Graph,
     is_node: is_node,
-    is_link: is_link,
+    is_link: is_link
 };
 
 });

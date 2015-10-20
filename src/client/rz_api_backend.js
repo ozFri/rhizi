@@ -1,3 +1,21 @@
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 "use strict";
 
 /**
@@ -5,12 +23,21 @@
  */
 define(['util', 'model/core'], function(util, model_core) {
 
+	var rz_core;
+
+	function get_rz_core() {
+		if (rz_core === undefined) {
+			rz_core =require('rz_core');
+		}
+		return rz_core;
+	}
+
     function RZ_API_Backend() {
 
         var rz_server_url = document.location.origin;
 
         var common_req_ctx = function() {
-            var common_ctx = { rzdoc_name:rz_config.rzdoc_cur__name, aifnode_name:rz_config.aifnode_cur__name}; // FIXME: call rz_core.rzdoc_get_current + avoid requirejs circular dep
+            var common_ctx = { rzdoc_name: get_rz_core().rzdoc__current__get_name() aifnode_name: get_rz_core().aifnode__current__get_name()};
             return common_ctx;
         };
 
@@ -22,19 +49,18 @@ define(['util', 'model/core'], function(util, model_core) {
             function on_error_wrapper(xhr, text_status, err_thrown) {
                 // log wrap callback
                 var err_msg = xhr.responseJSON && xhr.responseJSON.error;
-                console.error('ajax error: status: \'' + text_status + '\' error-msg: ' + err_msg);
+                console.error('ajax error: status: \'' + text_status + '\', error-msg: ' + err_msg);
                 if (on_error && typeof (on_error) === "function") {
                     on_error(xhr, text_status, err_thrown);
                 }
-            }
+            };
 
             function on_success_wrapper(xhr, text) {
                 // log wrap callback
                 var ret_data = xhr.data;
                 util.assert(undefined == xhr.error); // assert we no longer return errors along with HTTP 200 status codes
 
-                console.log('ajax success: return value:');
-                console.dir(ret_data);
+                console.log('ajax success: return value: ' + ret_data);
                 if (on_success) {
                     on_success(ret_data);
                 };
@@ -52,7 +78,7 @@ define(['util', 'model/core'], function(util, model_core) {
             req_opts.crossDomain = true;
 
             $.ajax(rz_server_url + path, req_opts);
-        }
+        };
 
         /**
          * common attr_diff
@@ -67,9 +93,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/graph/diff-commit-attr', req_opts, on_success,
+            return ajax_rs('/api/rzdoc/diff-commit__attr', req_opts, on_success,
                     on_error);
-        }
+        };
 
         /**
          * commit topo_diff
@@ -84,9 +110,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/graph/diff-commit-topo', req_opts, on_success,
+            return ajax_rs('/api/rzdoc/diff-commit__topo', req_opts, on_success,
                     on_error);
-        }
+        };
 
         /**
          * commit vis_diff
@@ -101,9 +127,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/graph/diff-commit-vis', req_opts, on_success,
+            return ajax_rs('/api/rzdoc/diff-commit__vis', req_opts, on_success,
                     on_error);
-        }
+        };
 
         /**
          * commit a diff_set
@@ -118,9 +144,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/graph/diff-commit-set', req_opts, on_success,
+            return ajax_rs('/api/rzdoc/diff-commit__set', req_opts, on_success,
                     on_error);
-        }
+        };
 
         /**
          * load node-set by id attribute
@@ -142,9 +168,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/load/node-set-by-id', req_opts, on_success,
+            return ajax_rs('/api/rzdoc/fetch/node-set-by-id', req_opts, on_success,
                     on_error);
-        }
+        };
 
         /**
          * load link set by src / dst id
@@ -160,9 +186,9 @@ define(['util', 'model/core'], function(util, model_core) {
                 data : JSON.stringify(req_data),
             };
 
-            return ajax_rs('/load/link-set/by_link_ptr_set', req_opts,
+            return ajax_rs('/api/rzdoc/fetch/link-set/by_link_ptr_set', req_opts,
                     on_success, on_error);
-        }
+        };
 
         /**
          * add a node set
@@ -172,7 +198,7 @@ define(['util', 'model/core'], function(util, model_core) {
             topo_diff.node_set_add = n_set;
 
             return this.topo_diff_commit(topo_diff, on_success, on_error);
-        }
+        };
 
         /**
          * add a link set
@@ -182,7 +208,7 @@ define(['util', 'model/core'], function(util, model_core) {
             topo_diff.link_set_add = l_set;
 
             return this.topo_diff_commit(topo_diff);
-        }
+        };
 
         /**
          * remove node set
@@ -190,7 +216,7 @@ define(['util', 'model/core'], function(util, model_core) {
         this.remove_node_set = function() {
             var topo_diff = null;
             return this.topo_diff_commit(topo_diff);
-        }
+        };
 
         /**
          * remove link set
@@ -198,14 +224,14 @@ define(['util', 'model/core'], function(util, model_core) {
         this.remove_link_set = function() {
             var topo_diff = null;
             return this.topo_diff_commit(topo_diff);
-        }
+        };
 
         /**
          * update node set
          */
         this.update_node_set = function(attr_diff, on_success, on_error) {
             return this.attr_diff_commit(attr_diff, on_success, on_error);
-        }
+        };
 
         /**
          * update link set
@@ -213,7 +239,7 @@ define(['util', 'model/core'], function(util, model_core) {
         this.update_link_set = function() {
             var attr_diff = null;
             return this.attr_diff_commit(null);
-        }
+        };
         /**
          * clone aifnode repo
          */
@@ -228,7 +254,7 @@ define(['util', 'model/core'], function(util, model_core) {
             };
 
             ajax_rs('/api/aifnode/clone', req_opts, on_success, on_error);
-        }
+        };
 
         /**
          * clone rhizi repo
@@ -244,7 +270,7 @@ define(['util', 'model/core'], function(util, model_core) {
             };
 
             ajax_rs('/api/rzdoc/clone', req_opts, on_success, on_error);
-        }
+        };
 
         /**
          * create aifnode
@@ -262,16 +288,18 @@ define(['util', 'model/core'], function(util, model_core) {
 
             var req_opts = { type : 'POST' };
             return ajax_rs('/api/rzdoc/' + rzdoc_name + '/create', req_opts, on_success, on_error);
-        }
+        };
 
         /**
          * list available rzdocs
          */
-        this.rzdoc_list = function(on_success, on_error) {
+        this.rzdoc_search = function(search_query, on_success, on_error) {
 
-            var req_opts = { type : 'POST' };
-            return ajax_rs('/api/rzdoc/list', req_opts, on_success, on_error);
-        }
+            var req_data = {'search_query': search_query};
+            var req_opts = { type : 'POST', data : JSON.stringify(req_data)};
+
+            return ajax_rs('/api/rzdoc/search', req_opts, on_success, on_error);
+        };
     }
 
     return new RZ_API_Backend();

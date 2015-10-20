@@ -1,4 +1,22 @@
-"use strict"
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+"use strict";
 
 define(['jquery', 'd3', 'consts', 'rz_bus', 'util', 'model/graph', 'model/core', 'view/item_info', 'rz_observer', 'view/selection', 'rz_mesh', 'model/diff', "view/graph_view", 'view/svg_input', 'view/filter_menu', 'view/activity', 'rz_api_backend', 'view/toolbar__status'],
 function($,        d3,   consts,   rz_bus,   util,   model_graph,   model_core,        item_info,   rz_observer,   selection,        rz_mesh,   model_diff,   graph_view,       svg_input,              filter_menu,        activity, rz_api_backend, toolbar__status) {
@@ -189,7 +207,7 @@ var init_graph_views = function () {
     published_var_dict.main_graph_view = main_graph_view;
     published_var_dict.edit_graph = edit_graph;
     published_var_dict.edit_graph_view = edit_graph_view;
-}
+};
 
 /**
  * Initialize backend websocket connection - this will have no effect if
@@ -230,7 +248,7 @@ function init() {
 function locate_visual_element(model_obj){
     var id_sel = $('#' + model_obj.id);
     if (0 === id_sel.length) {
-        console.warn('unable to find visual element for model object: object id: ' + model_obj.id.toString())
+        console.warn('unable to find visual element for model object: object id: ' + model_obj.id.toString());
         return null;
     }
     return id_sel[0];
@@ -252,7 +270,7 @@ function canvas_handler_dblclick(){
     var on_slowdown_cb =  function(){
         svgInput.enable($(n_ve).find('.nodetext'), n);
         observer.disconnect();
-    }
+    };
     var mutation_handler = rz_observer.new_Mutation_Handler__on_dxy_slowdown(on_slowdown_cb);
     var observer = rz_observer.new_MutationObserver(mutation_handler);
     mutation_handler.on_slowdown_threshold_reached;
@@ -331,6 +349,10 @@ function rzdoc__create_and_open(rzdoc_name) {
     rz_api_backend.rzdoc_create(rzdoc_name, on_success, on_error);
 }
 
+function rzdoc__current__get_name() {
+    return rz_config.rzdoc_cur__name;
+}
+
 /**
  * open rzdoc:
  *    - set rz_config.rzdoc_cur__name
@@ -393,9 +415,9 @@ function rzdoc__open(rzdoc_name) {
         window.history.replaceState(null, page_title(rzdoc_name), url_for_doc(rzdoc_name) + location.search);
 
         var rzdoc_bar = $('#rzdoc-bar_doc-label');
-        var rzdoc_bar__doc_lable = $('#rzdoc-bar_doc-label');
+        var rzdoc_bar__doc_label = $('#rzdoc-bar_doc-label');
         rzdoc_bar.fadeToggle(500, 'swing', function() {
-            rzdoc_bar__doc_lable.text(rzdoc_name);
+            rzdoc_bar__doc_label.text(rzdoc_name);
             rzdoc_bar.fadeToggle(500);
         });
 
@@ -433,12 +455,95 @@ function rzdoc__open(rzdoc_name) {
     main_graph.load_from_backend(on_success, on_error);
 }
 
-function rzdoc__current__get_name() {
-    return rz_config.rzdoc_cur__name;
-}
-
 function rzdoc__open_default() {
     return rzdoc__open(rz_config.rzdoc__mainpage_name);
+}
+
+function rzdoc__search(search_query) {
+
+    var cmd_bar,
+    close_btn,
+    result_body;
+
+    cmd_bar = $('#cmd-bar__rzdoc-search');
+    if (cmd_bar.length > 0) { // cmd bar present
+        cmd_bar.remove();
+    }
+
+    cmd_bar = $('<div class="cmd-bar" id="cmd-bar__rzdoc-search">');
+    cmd_bar.css('display', 'none');
+
+    close_btn = $('<div id="cmd_bar__rzdoc_close">x</div>');
+    close_btn.addClass('toolbar__close_btn');
+    cmd_bar.append(close_btn);
+
+    result_body = $('<div id="cmd-bar__rzdoc-search__result-body">');
+    cmd_bar.append(result_body);
+
+    cmd_bar.append($('<div class="cmd-bar__close_bar">Search results</div>'));
+
+    function on_error(rzdoc_name_list) {
+        // TODO: impl
+    }
+
+    function on_success(rzdoc_name_list) {
+
+        if (0 === rzdoc_name_list.length) { // no document found, suggest creation
+            var create_btn,
+                msg,
+                query_echo,
+                block_div_wrapper;
+
+            create_btn = $('<span>');
+            create_btn.text('Create document');
+            create_btn.addClass('cmd-bar_btn');
+
+            query_echo = '<span id=\"cmd-bar__rzdoc-search__query-echo\">\'' + search_query + '\'</span>';
+            msg = $('<span>No document titled ' + query_echo + ' was found.</span>');
+
+            block_div_wrapper = $('<div id="cmd-bar__rzdoc-search__no-results">');
+            block_div_wrapper.append(msg);
+            block_div_wrapper.append(create_btn);
+
+            result_body.append(block_div_wrapper);
+
+            create_btn.click(function() {
+                rzdoc__create_and_open(search_query);
+                cmd_bar.remove();
+            });
+
+            return;
+        }
+
+        rzdoc_name_list.sort();
+        for (var i = 0; i < rzdoc_name_list.length; i++) {
+            var rzdoc_item = $('<div title="Open Rhizi">' + rzdoc_name_list[i] + '</div>');
+            rzdoc_item.addClass('cmd_bar__rzdoc_open__item');
+            result_body.append(rzdoc_item);
+        }
+
+        $('.cmd_bar__rzdoc_open__item').click(function(click_event) { // attach common click handler
+            var rzdoc_name = click_event.currentTarget.textContent;
+            var rzdoc_cur_name = rzdoc__current__get_name();
+            if (rzdoc_name == rzdoc_cur_name) {
+                console.log('rzdoc__open: ignoring request to reopen currently rzdoc: name: ' + rzdoc_cur_name);
+                $("#rzdoc-bar_doc-label").fadeOut(400).fadeIn(400); // signal user
+            } else {
+                rzdoc__open(rzdoc_name);
+                cmd_bar.remove();
+            }
+        });
+    }
+
+    // close
+    close_btn.on('click', function() {
+        cmd_bar.remove();
+    });
+
+    rz_api_backend.rzdoc_search(search_query, on_success, on_error); // TODO: handle doc list timeout
+
+    cmd_bar.insertAfter('#top-bar');
+    cmd_bar.fadeToggle(400);
 }
 
 var published_var_dict = {
@@ -451,6 +556,7 @@ var published_var_dict = {
     aifnode__open: aifnode__open,
     rzdoc__current__get_name: rzdoc__current__get_name,
     rzdoc__open_default: rzdoc__open_default,
+    rzdoc__search: rzdoc__search,
     update_view__graph : update_view__graph,
 
     // vars, set by init
@@ -459,7 +565,7 @@ var published_var_dict = {
     edit_graph: undefined,
     edit_graph_view: undefined,
     root_element_id_to_graph_view: undefined,
-}
+};
 
 return published_var_dict;
 }); /* close define call */

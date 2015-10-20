@@ -1,5 +1,64 @@
-define(['textanalysis.ui', 'textanalysis', 'buttons', 'history', 'drag_n_drop', 'robot', 'model/core', 'rz_core', 'view/selection', 'util', 'view/search', 'feedback', 'keyshortcuts', 'view/filter_menu'],
-function(textanalysis_ui,   textanalysis,   buttons,   history,   drag_n_drop,   robot,   model_core,   rz_core,        selection,   util,   search,        feedback,   keyshortcuts,        filter_menu) {
+/*
+    This file is part of rhizi, a collaborative knowledge graph editor.
+    Copyright (C) 2014-2015  Rhizi
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Affero General Public License as published
+    by the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Affero General Public License for more details.
+
+    You should have received a copy of the GNU Affero General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+/**
+ * [!] order must match function args order
+ */
+define([
+        'buttons',
+        'devtools',
+        'drag_n_drop',
+        'feedback',
+        'history',
+        'keyshortcuts',
+        'model/core',
+        'robot',
+        'rz_core',
+        'textanalysis',
+        'textanalysis.ui',
+        'util',
+        'view/filter_menu',
+        'view/search',
+        'view/selection',
+        'view/filter',
+        ],
+
+/**
+ * [!] order must match define element order
+ */
+function(
+         buttons,
+         devtools,
+         drag_n_drop,
+         feedback,
+         history,
+         keyshortcuts,
+         model_core,
+         robot,
+         rz_core,
+         textanalysis,
+         textanalysis_ui,
+         util,
+         filter_menu,
+         search,
+         selection,
+         view_filter
+         ) {
 
     function fix_feedback_scrolling_to_visibility_causing_topbar_to_slide_slowly_in_webkit() {
         $('.feedback-btn').attr('tabindex', -1);
@@ -39,6 +98,7 @@ function(textanalysis_ui,   textanalysis,   buttons,   history,   drag_n_drop,  
         });
 
         // TODO: interaction between the hack above and this
+        view_filter.init();
         model_core.init(rz_config);
         rz_core.init();
         textanalysis.init(rz_core.main_graph);
@@ -50,7 +110,7 @@ function(textanalysis_ui,   textanalysis,   buttons,   history,   drag_n_drop,  
 
         // setup debug
         if (util.getParameterByName('debug')) {
-            $(document.body).addClass('debug');
+            $('#devtools').show();
             rz_core.edit_graph.set_user('fakeuser');
             rz_core.main_graph.set_user('fakeuser');
             drag_n_drop.init();

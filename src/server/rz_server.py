@@ -1,5 +1,21 @@
 #!/usr/bin/python2.7
 
+#    This file is part of rhizi, a collaborative knowledge graph editor.
+#    Copyright (C) 2014-2015  Rhizi
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published
+#    by the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import argparse
 from flask import Flask
 from flask import redirect
@@ -184,13 +200,7 @@ def init_rest_interface(cfg, flask_webapp):
     rest_entry_set = [
                       # REST endpoints
                       rest_entry('/feedback', rz_feedback.rest__send_user_feedback__email),
-                      rest_entry('/graph/diff-commit-set', rz_api_rest.diff_commit__set),
-                      rest_entry('/graph/diff-commit-topo', rz_api_rest.diff_commit__topo),
-                      rest_entry('/graph/diff-commit-attr', rz_api_rest.diff_commit__attr),
-                      rest_entry('/graph/diff-commit-vis', rz_api_rest.diff_commit__vis),
                       rest_entry('/index', rz_api.index, {'methods': ['GET']}),
-                      rest_entry('/load/node-set-by-id', rz_api_rest.load_node_set_by_id_attr),
-                      rest_entry('/load/link-set/by_link_ptr_set', rz_api_rest.load_link_set_by_link_ptr_set),
                       rest_entry('/login', rz_user.rest__login, {'methods': ['GET', 'POST']}),
                       rest_entry('/logout', rz_user.rest__logout, {'methods': ['GET', 'POST']}),
                       rest_entry('/match/node-set', rz_api_rest.match_node_set_by_attr_filter_map),
@@ -206,9 +216,18 @@ def init_rest_interface(cfg, flask_webapp):
                       # doc endpoints
                       rest_entry('/rz/<path:rzdoc_name>', rz_api_rest.rzdoc__via_rz_url, {'methods': ['GET']}),  # pretty URLs
                       rest_entry('/api/rzdoc/clone', rz_api_rest.rzdoc_clone),
-                      rest_entry('/api/rzdoc/list', rz_api_rest.rzdoc__list),
+                      rest_entry('/api/rzdoc/search', rz_api_rest.rzdoc__search),
                       rest_entry('/api/rzdoc/<path:rzdoc_name>/create', rz_api_rest.rzdoc__create),
                       rest_entry('/api/rzdoc/<path:rzdoc_name>/delete', rz_api_rest.rzdoc__delete, {'methods': ['GET', 'DELETE']}),  # TODO: rm 'GET' once we have UI deletion support - see #436
+
+                      rest_entry('/api/rzdoc/diff-commit__set', rz_api_rest.diff_commit__set),
+                      rest_entry('/api/rzdoc/diff-commit__topo', rz_api_rest.diff_commit__topo),
+                      rest_entry('/api/rzdoc/diff-commit__attr', rz_api_rest.diff_commit__attr),
+                      rest_entry('/api/rzdoc/diff-commit__vis', rz_api_rest.diff_commit__vis),
+
+
+                      rest_entry('/api/rzdoc/fetch/node-set-by-id', rz_api_rest.load_node_set_by_id_attr),
+                      rest_entry('/api/rzdoc/fetch/link-set/by_link_ptr_set', rz_api_rest.load_link_set_by_link_ptr_set),
 
                       # upload endpoints - this might change to external later, keep minimal and separate
                       rest_entry('/blob/upload', rz_blob.upload, {'methods': ['POST']}),
@@ -376,7 +395,7 @@ if __name__ == "__main__":
     #
     webapp = init_webapp(cfg, kernel)
     webapp.user_db = user_db
-    kernel.op_factory__DBO_rzdb__init_DB = webapp  # assist kernel with DB initialization
+    kernel.db_op_factory = webapp  # assist kernel with DB initialization
     ws_srv = init_ws_interface(cfg, kernel, webapp)
 
     try:
