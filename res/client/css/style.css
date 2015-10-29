@@ -1116,7 +1116,8 @@ p {
   line-height: 36px;
   margin-left: 10px;
   text-align: center;
-  width: 65px; }
+  width: 65px;
+  background: white; }
 
 .toolbar__close_btn {
   border-bottom-left-radius: 6px;
@@ -1416,7 +1417,7 @@ p {
   overflow: auto;
   padding: 0px 5px; }
   .activity__entry:hover {
-    background-color: #b9b9b9; }
+    background-color: #bababa; }
   .activity__entry:focus {
     outline: none; }
 
