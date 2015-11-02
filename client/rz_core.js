@@ -79,7 +79,7 @@ function svg_click_handler(e) {
 }
 
 function node_doubleclick_handler(e) {
-    var whatever= prompt("enter node");
+    var whatever = e.target.__data__.name;
     aifnode__create_and_open(whatever);
 }
 
@@ -354,7 +354,9 @@ function rzdoc__create_and_open(rzdoc_name) {
 function rzdoc__current__get_name() {
     return rz_config.rzdoc_cur__name;
 }
-
+function aifnode__current__get_name() {
+    return rz_config.aifnode_cur__name;
+}
 /**
  * open rzdoc:
  *    - set rz_config.rzdoc_cur__name
@@ -557,6 +559,7 @@ var published_var_dict = {
     rzdoc__open: rzdoc__open,
     aifnode__open: aifnode__open,
     rzdoc__current__get_name: rzdoc__current__get_name,
+    aifnode__current__get_name: aifnode__current__get_name,
     rzdoc__open_default: rzdoc__open_default,
     rzdoc__search: rzdoc__search,
     update_view__graph : update_view__graph,

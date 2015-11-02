@@ -37,7 +37,7 @@ define(['util', 'model/core'], function(util, model_core) {
         var rz_server_url = document.location.origin;
 
         var common_req_ctx = function() {
-            var common_ctx = { rzdoc_name: get_rz_core().rzdoc__current__get_name() aifnode_name: get_rz_core().aifnode__current__get_name() };
+            var common_ctx = { rzdoc_name: get_rz_core().rzdoc__current__get_name(), aifnode_name: get_rz_core().aifnode__current__get_name()};
             return common_ctx;
         };
 
