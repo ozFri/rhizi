@@ -897,9 +897,10 @@ class DBO_aifnode__clone(DB_op):
                  'order by n.id',
                  'skip %d' % (self.skip),
                  'limit %d' % (self.limit),
-                 'where n.name="%s"' % aifnode.name,
                  'optional match (n)-[r*0..2]-(m)',
-                 'return m,labels(m),collect([r, extract(rel in r | type(rel)), m.id])']
+                 'where m.name="%s"' % aifnode.name,
+                 'unwind r as rels'
+                 'return n,labels(m),collect([rels,type(rels), m.id])']
 
 
         db_q = DB_Query(q_arr)

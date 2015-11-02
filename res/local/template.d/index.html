@@ -24,29 +24,6 @@ var RZ_VERSION = '{% include "version.txt" %}';
 <script src="/static/js/local_config.js"></script>
 {% endblock %}
 {% block content %}
-<<<<<<< HEAD:res/domain-fragment.d/default/template.d/index.html
-  <div class="top-bar">
-    <span id="top-bar_float-left">
-<!--      <div id="rzdoc-bar">
-        <span id="rzdoc-bar_doc-label"></span>
-        <span class="tool_bar_btn" id="btn_rzdoc__new" title="New"></span>
-        <span class="tool_bar_btn" id="btn_rzdoc__open" title="Open"></span>
-      </div> -->
-    </span>
-    <span id="top-bar_float-right">
-      <span class="top-bar__user-area">
-           <span id="profile-circle"></span>
-           <span class="profile-username">Hello&nbsp;<span id="user_id">{{ rz_username }}</span>!<span id="btn-logout" class="button">Logout</span></span>
-
- 
-      </span>
-      <span class="site-logo"><a tabindex="-1"><img id="site-logo" src="{{ fragment_d_path }}/img/site-logo.png"></a></span>
-    </span>
-          <div id="user_notifications_view">
-              <div id="user_notifications__header"><div id="notification_window" >0<div id="notifications"></div></div></div>
-          <div id="user_notifications__body" style= "display: none"></div>
-        </div>
-=======
   <div id="top-bar">
     <div id="top-bar_L1">
       <div id="rzdoc-bar">
@@ -72,9 +49,12 @@ var RZ_VERSION = '{% include "version.txt" %}';
         <div class="menu-bar__item" id="menu-bar__rzdoc-search" title="Search for Rhizi documents">
           <input id="menu-bar__rzdoc-search__input" placeholder="Search for documents">
         </div>
-      </div>
+        <div id="user_notifications_view">
+            <div id="user_notifications__header"><div id="notification_window" >0<div id="notifications"></div></div></div>
+        <div id="user_notifications__body" style= "display: none"></div>
+        </div>
     </div>
->>>>>>> 8db8b1c735efb4d1c1a6bbc348d1f9a8c94627c4:res/local/template.d/index.html
+    </div>
   </div>
   <div id="status-bar" style="display:none"></div>
   <div id="intro-task" class="task-alert" style="display:none">

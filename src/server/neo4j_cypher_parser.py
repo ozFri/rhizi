@@ -63,6 +63,7 @@ tok_set__kw__unsupported = [  # these are treated as generic clauses, capturing 
                             'union',
                             'where',
                             'with',
+                            'unwind',
                             ]
 
 tok_set__kw__all = tok_set__kw__supported + tok_set__kw__unsupported
