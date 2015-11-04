@@ -1,5 +1,3 @@
-#    This file is part of rhizi, a collaborative knowledge graph editor.
-#    Copyright (C) 2014-2015  Rhizi
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as published
@@ -897,10 +895,25 @@ class DBO_aifnode__clone(DB_op):
                  'order by n.id',
                  'skip %d' % (self.skip),
                  'limit %d' % (self.limit),
-                 'optional match (n)-[r*0..2]-(m)',
+                 'optional match (m)-[r*1]-(n)',#-[l]-(n)',
+                 'where n.name="%s"' % aifnode.name,
+                 'unwind r as rels ',
+                 'unwind [m]+n as res ',
+                 'return res,labels(res),collect([rels,type(rels), n.id])'
+                 'union'
+                 'match (n)',
+                 'with n',
+                 'order by n.id',
+                 'skip %d' % (self.skip),
+                 'limit %d' % (self.limit),
+                 'optional match (m)-[*1]-(n)-[r*1]-(s)',
                  'where m.name="%s"' % aifnode.name,
-                 'unwind r as rels'
-                 'return n,labels(m),collect([rels,type(rels), m.id])']
+                 'unwind r as rels ',
+                 'unwind [n]+[s] as res ',
+                 'return res,labels(res),collect([rels,type(rels), n.id])'
+                 ]
+
+
 
 
         db_q = DB_Query(q_arr)
@@ -909,10 +922,9 @@ class DBO_aifnode__clone(DB_op):
     def process_result_set(self):
         ret_n_set = []
         ret_l_set = []
-        for _, _, r_set in self.iter__r_set():
+        for _, _, r_set in self.iter__r_set(): 
             for row in r_set:
                 n, n_lbl_set, l_set = row.items()  # see query return statement
-
                 # reconstruct nodes
                 assert None != n.get('id'), "db contains nodes with no id"
 

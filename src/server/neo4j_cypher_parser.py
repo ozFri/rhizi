@@ -829,7 +829,7 @@ class Cypher_Parser(object):
                 return self.parse__rel(input[1:], n_cur)
 
             n_cur = n_cur.parent
-            if n_cur.__class__ == p_path:
+            while n_cur.__class__ == p_path:
                 n_cur = n_cur.parent
             return self.__parse(input[1:], n_cur)
 
