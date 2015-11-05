@@ -2005,7 +2005,11 @@ p {
  }
 
 .insideforeign {
-  display: inline; }
+  display: inline;
+  border: 1px solid;
+  border-color: #919095;
+  background: white;
+  padding: 6px 8px 5px 8px; }
   .insideforeign:focus {
     outline: none; }
 
