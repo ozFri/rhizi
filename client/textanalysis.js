@@ -33,7 +33,7 @@ var typeindex = 0,
     default_nodetype = nodetypes[0],
     node_name_to_type = {"infers" : "idea",
     			"contradicts": "project",
-			"in event": "skill"};
+			"in event": "skill"},
     nodetype_to_index = _.object(nodetypes, _.range(nodetypes.length));
 
 var linknumber = 0 ;

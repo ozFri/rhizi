@@ -664,7 +664,7 @@ class Cypher_Parser(object):
         if ' ' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume    
         if 'p' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
         if '=' == input[0]: return self.parse__e_clause_create_or_match(input[1:], n_cur)  # consume
-        if '(' == input[0]: return self.parse__node_or_rel(input, n_cur)  # open node or path
+        if '(' == input[0]: return self.parse__node(input, n_cur)  # open node or path
 
         if ',' == input[0]:  # open sibling
             assert len(n_cur.sub_exp_set) >= 2 and e_keyword == n_cur.sub_exp_set[0].__class__

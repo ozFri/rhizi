@@ -36,8 +36,6 @@ from .model.model import Link
 from .rz_api import rz_mainpage
 from .rz_api_common import (sanitize_input__attr_diff,
      __sanitize_input, sanitize_input__rzdoc_name, sanitize_input__aifnode_name)
-
-
 from .rz_api_common import sanitize_input__topo_diff
 from .rz_api_common import validate_obj__attr_diff
 from .rz_kernel import RZDoc_Exception__already_exists, AIFNode_Exception__already_exists
@@ -63,11 +61,6 @@ class Req_Context(object):
         self.aifnode = aifnode
 
 def __context__common(rzdoc_name=None, aifnode_name=None):
-
-<<<<<<< HEAD
-=======
-def __context__common(rzdoc_name=None, aifnode_name=None):
->>>>>>> minor changes
     """
     Common request context builder passed along with kernel calls:
        - set user_name
