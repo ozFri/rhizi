@@ -1,4 +1,3 @@
-/*
     This file is part of rhizi, a collaborative knowledge graph editor.
     Copyright (C) 2014-2015  Rhizi
 

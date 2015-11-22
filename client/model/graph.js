@@ -1299,6 +1299,16 @@ function Graph(spec) {
     }
     this.load_from_backend = load_from_backend;
 
+    function load_aif_from_backend(on_success, on_error) {
+
+        function on_success_wrapper(clone) {
+            __commit_diff_ajax__clone(clone);
+            undefined != on_success && on_success();
+        }
+
+        rz_api_backend.aifnode_clone(on_success_wrapper, on_error);
+    }
+    this.load_aif_from_backend = load_aif_from_backend;
     var new_topo_diff__from_nodes_links = function (nodes, links) {
         var diff,
             node_by_id = {},

@@ -46,17 +46,12 @@ var RZ_VERSION = '{% include "version.txt" %}';
         <div class="menu-bar__item" id="menu-bar__activity-view-toggle" title="Enable checkbox to display activity log">
           <span>Show Activity Log</span><input id="checkbox__activity-view-toggle" type="checkbox" name="activity-view-toggle">
         </div> -->
-        <div id="user_notifications_view">
-              <div id="user_notifications__header"><div id="notification_window" >0<div id="notifications"></div></div></div>
-          <div id="user_notifications__body" style= "display: none"></div>
-        </div>
-
-        <div class="menu-bar__item" id="menu-bar__rzdoc-search" title="Search for Rhizi documents">
-          <input id="menu-bar__rzdoc-search__input" placeholder="Search for documents">
-        </div>
-        <div id="user_notifications_view">
+           <div id="user_notifications_view">
             <div id="user_notifications__header"><div id="notification_window" >0<div id="notifications"></div></div></div>
         <div id="user_notifications__body" style= "display: none"></div>
+        </div>
+        <div class="menu-bar__item" id="menu-bar__rzdoc-search" title="Search for Rhizi documents">
+          <input id="menu-bar__rzdoc-search__input" placeholder="Search for documents">
         </div>
     </div>
     </div>
@@ -66,7 +61,7 @@ var RZ_VERSION = '{% include "version.txt" %}';
     <span class="task-desc">Connect yourself to the clubs, internship proposals, skills &amp; scientific interests you have.</span>
     <span class="task-close-button">got it</span>
   </div>
-  <div id="input-box-set-container">
+<!--  <div id="input-box-set-container">
       <div class="input-container" id="input-container__search">
           <input class="input-bar" tabindex="1" id="search" placeholder="Search and select nodes"/>
           <button tabindex="-1" id="btn_search"></button>
@@ -83,7 +78,7 @@ var RZ_VERSION = '{% include "version.txt" %}';
           <div id="activity_view__body" style= "display: none"></div>
         </div>
       </div>
-  </div>
+      </div> -->
   <div class="graph-view">
     <div id="tool-bar">
       <div id="tool-bar-top-bar">
@@ -125,6 +120,7 @@ var RZ_VERSION = '{% include "version.txt" %}';
         <div contentEditable="true" tabindex="2" class="input input-bar" id="textanalyser" placeholder="Add elements" autofocus ></div>
         <button tabindex="-1" id="btn_add"></button>
         <div id="input-suggestion" class="suggestion" style="display: none"></div>
+        <div id="input-suggestion2" class="suggestion" style="display: none"></div>
         <p class="input-help-text"> Use double-space to form a network. Type:<i><span class="analyser-span-node"> John </span>[double-space]<span class="analyser-span-link">  knows </span>[double-space]<span class="analyser-span-node">  Karate</span></p></i>
       </div>
     </div>
