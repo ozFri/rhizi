@@ -73,30 +73,6 @@ class QT_RZDOC_NS_Filter__common(Query_Transformation):
         return ret
 
 
-    def apply_to_single_query(self, dbq):
-        q_type = dbq.query_struct_type
-        clause_set = []
-
-        if Query_Struct_Type.w == q_type:
-            clause_set += dbq.pt_root.clause_set_by_kw('create')
-        if Query_Struct_Type.r == q_type:
-            clause_set += dbq.pt_root.clause_set_by_kw('match')
-        if Query_Struct_Type.rw == q_type:
-            clause_set += dbq.pt_root.clause_set_by_kw('create')
-            clause_set += dbq.pt_root.clause_set_by_kw('match')
-
-        for c in clause_set:
-            n_exp_set = c.sub_exp_set_by_type(p_node, recurse=True)
-            for n_exp in n_exp_set:
-
-                if n_exp.parent.__class__ == p_path:
-                    continue;
-
-                lbl_set = n_exp.label_set
-                if not lbl_set:  # add label set if necessary
-                    lbl_set = n_exp.spawn_label_set()
-                lbl_set.add_label(self.ns_label)
-
 class QT_AIFNODE_NS_Filter__common(Query_Transformation):
     """
     Add AIFNode name-space filter:
@@ -152,6 +128,7 @@ class QT_AIFNODE_NS_Filter(QT_AIFNODE_NS_Filter__common):
         super(QT_AIFNODE_NS_Filter, self).__init__(ns_label)
 
 
+
 class QT_RZDOC_NS_Filter(QT_RZDOC_NS_Filter__common):
 
     def __init__(self, rzdoc):
@@ -169,6 +146,7 @@ class QT_AIFNODE_Meta_NS_Filter(QT_AIFNODE_NS_Filter__common):
     def __init__(self, rzdoc):
         ns_label = rzdoc__meta_ns_label(rzdoc)
         super(QT_RZDOC_Meta_NS_Filter, self).__init__(ns_label)
+
 
 
 class QT_Node_Filter__meta_label_set(Query_Transformation):

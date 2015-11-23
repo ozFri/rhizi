@@ -37,6 +37,7 @@ from .model.model import RZDoc
 from .neo4j_qt import QT_AIFNODE_NS_Filter, QT_RZDOC_NS_Filter, QT_RZDOC_Meta_NS_Filter
 from .neo4j_util import generate_random_rzdoc_id
 
+
 log = logging.getLogger('rhizi')
 
 class AIFNode_Exception__not_found(Exception):
@@ -259,7 +260,7 @@ class RZ_Kernel(object):
         self.executor.shutdown()
         log.info('rz_kernel: shutting down')
 
-    def cache_lookup__aifnode(self, aifnode_name):
+    def cache_lookup__aifnode(self, aifnode_name, raise_if_missing=True):
         """
         lookup AIFNode by aifnode_name, possibly triggering a DB query
 
@@ -280,12 +281,12 @@ class RZ_Kernel(object):
         self.cache__aifnode_name_to_aifnode[aifnode_name] = aif_node
         return aif_node
 
-    def cache_lookup__rzdoc(self, rzdoc_name):
+    def cache_lookup__rzdoc(self, rzdoc_name, raise_if_missing=True):
         """
         lookup RZDoc by rzdoc_name, possibly triggering a DB query
 
-        @return: RZDoc
-        @raise RZDoc_Exception__not_found
+        @raise RZDoc_Exception__not_found if raise_if_missing
+        @return: RZDoc or None
         """
         # FIXME: impl cache cleansing logic
 
@@ -296,7 +297,9 @@ class RZ_Kernel(object):
         rz_doc = self.rzdoc__lookup_by_name(rzdoc_name)
 
         if None == rz_doc:
-            raise RZDoc_Exception__not_found(rzdoc_name)
+            if raise_if_missing:
+                raise RZDoc_Exception__not_found(rzdoc_name)
+            return None
 
         self.cache__rzdoc_name_to_rzdoc[rzdoc_name] = rz_doc
         return rz_doc
@@ -365,20 +368,6 @@ class RZ_Kernel(object):
         op = DBO_match_node_set_by_id_attribute(id_set=id_set)
         op_ret = self.db_ctl.exec_op(op)
         return op_ret
-
-    def aifnode__clone(self, aifnode, rzdoc, ctx=None):
-        """
-        Clone node, neighbours, comments..
-
-        @return Topo_Diff with node/link attributes
-        """
-#        filter_attribute_map="{'name':[something]}"
-#        op = DBO_match_node_id_set(filter_attribute_map)
-        op = DBO_aifnode__clone(aifnode)
-        op = QT_RZDOC_NS_Filter(rzdoc)(op)
-
-        topo_diff = self.db_ctl.exec_op(op)
-        return topo_diff
 
     @deco__DB_status_check
     def aifnode__clone(self, aifnode, rzdoc, ctx=None):
@@ -490,11 +479,9 @@ class RZ_Kernel(object):
         @return: RZDoc object
         @raise RZDoc_Exception__already_exists
         """
-        try:
-            self.cache_lookup__rzdoc(rzdoc_name)
+        existing_doc = self.cache_lookup__rzdoc(rzdoc_name, raise_if_missing=False)
+        if existing_doc is not None:
             raise RZDoc_Exception__already_exists(rzdoc_name)
-        except RZDoc_Exception__not_found:
-            pass
 
         rzdoc = RZDoc(rzdoc_name)
         rzdoc.id = generate_random_rzdoc_id()

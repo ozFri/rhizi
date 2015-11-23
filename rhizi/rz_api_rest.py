@@ -28,6 +28,7 @@ import flask
 import logging
 
 
+
 from .db_op import (DBO_match_node_set_by_id_attribute,
     DBO_load_link_set, DBO_match_node_id_set, DBO_diff_commit__topo)
 from .model.graph import Attr_Diff
@@ -61,6 +62,7 @@ class Req_Context(object):
         self.aifnode = aifnode
 
 def __context__common(rzdoc_name=None, aifnode_name=None):
+
     """
     Common request context builder passed along with kernel calls:
        - set user_name
@@ -71,7 +73,7 @@ def __context__common(rzdoc_name=None, aifnode_name=None):
     rzdoc_name = rzdoc_name
     aifnode_name = aifnode_name
     ret = Req_Context()
-    if session.has_key('username'):
+    if 'username' in session:
         ret.user_name = session['username']
 
     if None != rzdoc_name:
@@ -221,9 +223,6 @@ def match_node_set_by_attr_filter_map(attr_filter_map):
 def aifnode__via_rz_url(aifnode_name=None):
     return rz_mainpage(aifnode_name)
 
-
-def aifnode__via_rz_url(aifnode_name=None):
-    return rz_mainpage(aifnode_name)
 
 def rzdoc__via_rz_url(rzdoc_name=None):
     return rz_mainpage(rzdoc_name)

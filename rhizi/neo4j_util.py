@@ -192,8 +192,8 @@ def gen_query_create_from_node_map(node_map, input_to_DB_property_map=lambda _: 
         q_params_set = []
         for n_prop_set in n_set:
 
-            assert n_prop_set.has_key('id'), 'node create query: node id attribute not set'
-            assert not n_prop_set.has_key('__label_set'), 'node create query: out-of-place \'__label_set\' attribute in attribute set'
+            assert 'id' in n_prop_set, 'node create query: node id attribute not set'
+            assert '__label_set' not in n_prop_set, 'node create query: out-of-place \'__label_set\' attribute in attribute set'
 
             q_params = input_to_DB_property_map(n_prop_set)
             q_params_set.append(q_params)
@@ -224,9 +224,9 @@ def gen_query_create_from_link_map(link_map, input_to_DB_property_map=lambda _: 
                  ]
 
         for link in l_set:
-            assert link.has_key('__src_id')
-            assert link.has_key('__dst_id')
-            assert link.has_key('id'), 'link create query: link id attribute not set'
+            assert '__src_id' in link
+            assert '__dst_id' in link
+            assert 'id' in link, 'link create query: link id attribute not set'
 
             # TODO: use object based link representation
             l_prop_set = link.copy()
@@ -304,7 +304,7 @@ def post_neo4j(url, data):
     @return dict object from the neo4j json POST response
     """
     ret = post(url, data)
-    ret_data = json.load(ret)
+    ret_data = json.loads(ret.read().decode('utf-8'))
 
     # [!] do not raise exception if ret_data['errors'] is not empty -
     # this allows query-sets to partially succeed
@@ -314,7 +314,7 @@ def post_neo4j(url, data):
 def post(url, data):
     assert(isinstance(data, dict))  # make sure we're not handed json strings
 
-    post_data_json = json.dumps(data)
+    post_data_json = json.dumps(data).encode('utf-8')
 
     req = request.Request(url)
     req.add_header('User-Agent', 'rhizi-server/0.1')
