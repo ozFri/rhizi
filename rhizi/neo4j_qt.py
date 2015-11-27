@@ -72,6 +72,32 @@ class QT_RZDOC_NS_Filter__common(Query_Transformation):
 
         return ret
 
+    def apply_to_single_query(self, dbq):
+        q_type = dbq.query_struct_type
+        clause_set = []
+
+        if Query_Struct_Type.w == q_type:
+            clause_set += dbq.pt_root.clause_set_by_kw('create')
+        if Query_Struct_Type.r == q_type:
+            clause_set += dbq.pt_root.clause_set_by_kw('match')
+        if Query_Struct_Type.rw == q_type:
+            clause_set += dbq.pt_root.clause_set_by_kw('create')
+            clause_set += dbq.pt_root.clause_set_by_kw('match')
+
+        for c in clause_set:
+            n_exp_set = c.sub_exp_set_by_type(p_node, recurse=True)
+            for n_exp in n_exp_set:
+
+                if n_exp.parent.__class__ == p_path:
+                    continue;
+
+                lbl_set = n_exp.label_set
+                if not lbl_set:  # add label set if necessary
+                    lbl_set = n_exp.spawn_label_set()
+                lbl_set.add_label(self.ns_label)
+
+            # log.debug('db_q trans: in clause: %s, out clause: %s' % (cur_clause, new_clause))
+
 
 class QT_AIFNODE_NS_Filter__common(Query_Transformation):
     """
