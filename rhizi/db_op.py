@@ -905,7 +905,7 @@ class DBO_aifnode__clone(DB_op):
                  'order by n.id',
                  'skip %d' % (self.skip),
                  'limit %d' % (self.limit),
-                 'optional match (m)-[r*1]-(n)',#-[l]-(n)',
+                 'optional match (n)-[r*1]-(m)',#-[l]-(n)',
                  'where n.name="%s"' % aifnode.name,
                  'unwind r as rels ',
                  'unwind [m]+n as res ',

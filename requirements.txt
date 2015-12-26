@@ -6,11 +6,8 @@ gevent-websocket==0.9.5
 greenlet==0.4.9
 flask==0.10.1
 six==1.9.0
-futures >= 2.2.0
 enum34 == 1.0.4
-Jinja2 == 2.7.3
 Werkzeug == 0.10.4
-flup == 1.0.3.dev-20110405
 socketIO-client==0.6.5
 Jinja2 == 2.7.3
 flup == 1.0.3.dev-20110405

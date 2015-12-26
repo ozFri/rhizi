@@ -134,6 +134,9 @@ function( util,   model_diff,   model_util,   io,              activity) {
         destroy: destroy,
         emit__rzdoc_subscribe: emit__rzdoc_subscribe,
         emit__rzdoc_unsubscribe: emit__rzdoc_unsubscribe,
+        emit__aifnode_subscribe: emit__aifnode_subscribe
+//        emit__aifnode_unsubscribe: emit__aifnode_unsubscribe
+
     };
 
 });
